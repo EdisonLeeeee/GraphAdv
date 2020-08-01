@@ -1,0 +1,9 @@
+networkx>=2.3
+scipy==1.4.1
+tensorflow>=2.1.0
+numpy>=1.17.4
+numba>=0.46.0
+tqdm>=4.40.2
+scikit_learn>=0.23.1
+texttable
+graphgallery
