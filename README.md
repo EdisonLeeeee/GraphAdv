@@ -26,7 +26,7 @@ Other packages (not necessary):
 
 + texttable
 
-# Install
+# Installation
 TODO
 ```bash
 # graphgallery is necessary for this package

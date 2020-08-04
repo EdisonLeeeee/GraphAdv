@@ -10,7 +10,7 @@ class RAND(UntargetedAttacker):
         super().__init__(adj, seed=seed, name=name, **kwargs)
 
         if graph is None:
-            graph = nx.from_scipy_sparse_matrix(adj, create_using=nx.DiGraph)
+            graph = nx.from_scipy_sparse_matrix(self.adj, create_using=nx.DiGraph)
 
         self.graph = graph
         self.nodes_set = set(range(self.n_nodes))

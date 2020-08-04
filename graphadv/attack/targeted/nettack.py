@@ -32,6 +32,8 @@ class Nettack(TargetedAttacker):
 
     def __init__(self, adj, x, labels, idx_train=None, idx_val=None, surrogate=None, seed=None, name=None, device='CPU:0', **kwargs):
         super().__init__(adj=adj, x=x, labels=labels, seed=seed, name=name, device=device, **kwargs)
+        
+        adj, x = self.adj, self.x
 
         if surrogate is None:
             surrogate = train_a_surrogate(self, 'GCN', idx_train, idx_val, **kwargs)

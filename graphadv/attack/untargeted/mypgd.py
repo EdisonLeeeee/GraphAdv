@@ -30,10 +30,10 @@ class PGD(UntargetedAttacker):
         idx_train = asintarr(idx_train)
 
         with tf.device(self.device):
-            self.idx_train = tf.convert_to_tensor(idx_train, dtype=self.intx)
-            self.labels_train = tf.convert_to_tensor(self.labels[idx_train], dtype=self.intx)
-            self.tf_adj = tf.convert_to_tensor(self.adj.A, dtype=self.floatx)
-            self.tf_x = tf.convert_to_tensor(self.x, dtype=self.floatx)
+            self.idx_train = astensor(idx_train, dtype=self.intx)
+            self.labels_train = astensor(self.labels[idx_train], dtype=self.intx)
+            self.tf_adj = astensor(self.adj.A, dtype=self.floatx)
+            self.tf_x = astensor(self.x, dtype=self.floatx)
             self.complementary = tf.ones_like(self.tf_adj) - tf.eye(self.n_nodes) - 2. * self.tf_adj
             self.loss_fn = tf.keras.losses.sparse_categorical_crossentropy
             self.adj_changes = tf.Variable(tf.zeros((self.n_nodes, self.n_nodes), dtype=self.floatx))
@@ -141,7 +141,7 @@ class PGD(UntargetedAttacker):
                 continue
 
             with tf.device(self.device):
-                self.adj_changes.assign(tf.convert_to_tensor(sampled, dtype=self.floatx))
+                self.adj_changes.assign(astensor(sampled, dtype=self.floatx))
                 adj = self.adj_with_perturbation()
                 adj_norm = normalize_adj_tensor(adj)
                 logit = self.surrogate([self.tf_x, adj_norm, self.idx_train])

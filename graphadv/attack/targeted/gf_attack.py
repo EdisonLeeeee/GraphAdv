@@ -15,7 +15,8 @@ class GFA(TargetedAttacker):
 
     def __init__(self, adj, x, K=2, T=128, seed=None, name=None, device='CPU:0', **kwargs):
         super().__init__(adj, x=x, seed=seed, name=name, device=device, **kwargs)
-
+        adj, x = self.adj, self.x
+        
         adj_with_I = adj + sp.eye(adj.shape[0])
         rowsum = adj_with_I.sum(1).A1
         degree_mat = np.diag(rowsum)

@@ -5,7 +5,7 @@ from tensorflow.keras.optimizers import Adam
 from graphadv.attack.untargeted.untargeted_attacker import UntargetedAttacker
 from graphadv.utils.surrogate_utils import train_a_surrogate
 from graphgallery.nn.models import DenseGCN
-from graphgallery import tqdm, asintarr, normalize_adj_tensor
+from graphgallery import tqdm, asintarr, normalize_adj_tensor, astensor
 
 
 class PGD(UntargetedAttacker):
@@ -41,10 +41,10 @@ class PGD(UntargetedAttacker):
             self_training_labels = self.estimate_self_training_labels(surrogate, idx_unlabeled)
 
         with tf.device(self.device):
-            self.tf_index = tf.convert_to_tensor(index_all, dtype=self.intx)
-            self.tf_labels = tf.convert_to_tensor(np.hstack([labels[idx_train], self_training_labels]), dtype=self.intx)
-            self.tf_adj = tf.convert_to_tensor(self.adj.A, dtype=self.floatx)
-            self.tf_x = tf.convert_to_tensor(self.x, dtype=self.floatx)
+            self.tf_index = astensor(index_all, dtype=self.intx)
+            self.tf_labels = astensor(np.hstack([labels[idx_train], self_training_labels]), dtype=self.intx)
+            self.tf_adj = astensor(self.adj.A, dtype=self.floatx)
+            self.tf_x = astensor(self.x, dtype=self.floatx)
             self.complementary = tf.ones_like(self.tf_adj) - tf.eye(self.n_nodes) - 2. * self.tf_adj
             self.loss_fn = tf.keras.losses.sparse_categorical_crossentropy
             self.adj_changes = tf.Variable(tf.zeros((self.n_nodes, self.n_nodes), dtype=self.floatx))
@@ -165,7 +165,7 @@ class PGD(UntargetedAttacker):
                 continue
 
             with tf.device(self.device):
-                self.adj_changes.assign(tf.convert_to_tensor(sampled, dtype=self.floatx))
+                self.adj_changes.assign(astensor(sampled, dtype=self.floatx))
                 adj = self.adj_with_perturbation()
                 adj_norm = normalize_adj_tensor(adj)
                 logit = self.surrogate([self.tf_x, adj_norm, self.tf_index])

@@ -19,7 +19,7 @@ class FGSM(TargetedAttacker):
         with tf.device(self.device):
             self.surrogate = surrogate
             self.loss_fn = tf.keras.losses.sparse_categorical_crossentropy
-            self.tf_x = astensor(x)
+            self.tf_x = astensor(self.x)
 
     def reset(self):
         super().reset()

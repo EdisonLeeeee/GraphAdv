@@ -3,6 +3,7 @@ import tensorflow as tf
 import scipy.sparse as sp
 from numba import njit
 
+
 def estimate_loss_with_perturbation_gradient(candidates, adj_matrix, window_size, dim, n_neg_samples=1):
     """Computes the estimated loss using the gradient defined with eigenvalue perturbation.
 
@@ -19,7 +20,7 @@ def estimate_loss_with_perturbation_gradient(candidates, adj_matrix, window_size
     :return:
     """
     adj_matrix = tf.convert_to_tensor(adj_matrix.toarray())
-    
+
     with tf.GradientTape() as tape:
         tape.watch(adj_matrix)
         deg = tf.reduce_sum(adj_matrix, 1)
@@ -39,11 +40,11 @@ def estimate_loss_with_perturbation_gradient(candidates, adj_matrix, window_size
         norm_logM = tf.square(tf.norm(logM, ord=2))
         sp_logM = sp.csr_matrix(logM.numpy())
         _, eigenvecs = sp.linalg.eigsh(sp_logM, dim)
-        
+
         eigenvecs = tf.convert_to_tensor(eigenvecs)
         eigen_vals = tf.reduce_sum(eigenvecs * tf.matmul(logM, eigenvecs), 0)
         loss = tf.sqrt(norm_logM - tf.reduce_sum(tf.square(eigen_vals)))
-    
+
     adj_matrix_grad = tape.gradient(loss, adj_matrix).numpy()
     sig_est_grad = adj_matrix_grad[candidates[:, 0], candidates[:, 1]] + adj_matrix_grad[candidates[:, 1], candidates[:, 0]]
     ignore = sig_est_grad < 0
@@ -78,7 +79,7 @@ def estimate_loss_with_delta_eigenvals(candidates, flip_indicator, vals_org, vec
     for x in range(len(candidates)):
         i, j = candidates[x]
         vals_est = vals_org + flip_indicator[x] * (
-                2 * vecs_org[i] * vecs_org[j] - vals_org * (vecs_org[i] ** 2 + vecs_org[j] ** 2))
+            2 * vecs_org[i] * vecs_org[j] - vals_org * (vecs_org[i] ** 2 + vecs_org[j] ** 2))
 
         vals_sum_powers = sum_of_powers(vals_est, window_size)
 
@@ -86,6 +87,7 @@ def estimate_loss_with_delta_eigenvals(candidates, flip_indicator, vals_org, vec
         loss_est[x] = loss_ij
 
     return loss_est
+
 
 @njit
 def sum_of_powers(x, power):

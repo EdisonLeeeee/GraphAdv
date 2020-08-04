@@ -12,7 +12,7 @@ from graphgallery import tqdm, astensor
 
 
 class SGA(TargetedAttacker):
-    def __init__(self, adj, x, labels, idx_train=None, idx_val=None, graph=None, radius=2, 
+    def __init__(self, adj, x, labels, idx_train=None, idx_val=None, graph=None, radius=2,
                  seed=None, name=None, device='CPU:0', surrogate=None, surrogate_args={}, **kwargs):
         super().__init__(adj, x=x, labels=labels, seed=seed, name=name, device=device, **kwargs)
 
@@ -26,7 +26,7 @@ class SGA(TargetedAttacker):
 
         with tf.device(self.device):
             W, b = surrogate.weights
-            X = astensor(x)
+            X = astensor(self.x)
             self.b = b
             self.XW = X @ W
             self.surrogate = surrogate

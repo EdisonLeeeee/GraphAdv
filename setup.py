@@ -6,14 +6,14 @@ from graphadv import __version__
 url = 'https://github.com/EdisonLeeeee/GraphgAdv'
 
 install_requires = [
-            'networkx>=2.3',
-            'scipy==1.4.1',
-            'tensorflow>=2.1.0',
-            'numpy>=1.17.4',
-            'texttable>=1.6.2',
-            'numba>=0.46.0',
-            'tqdm>=4.40.2',
-            'scikit_learn>=0.23.1',
+    'networkx>=2.3',
+    'scipy>=1.4.1',
+    'tensorflow>=2.1.0',
+    'numpy>=1.17.4',
+    'texttable>=1.6.2',
+    'numba>=0.46.0',
+    'tqdm>=4.40.2',
+    'scikit_learn>=0.22',
 ]
 
 setup(

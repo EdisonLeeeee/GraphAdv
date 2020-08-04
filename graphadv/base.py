@@ -65,16 +65,14 @@ class BaseModel:
         self.device = device
         self.attribute_flips = None
         self.structure_flips = None
-        
+
         self.__reseted = False
         self.__allow_singleton = False
-
 
     @abc.abstractmethod
     def reset(self):
         raise NotImplementedError
-        
-        
+
     @property
     def A(self):
         edge_flips = self.edge_flips
@@ -92,7 +90,7 @@ class BaseModel:
         if isinstance(adj, (np.ndarray, np.matrix)):
             adj = sp.csr_matrix(adj)
         elif sp.isspmatrix(adj):
-            adj = adj.tocsr()
+            adj = adj.tocsr(copy=False)
         else:
             raise TypeError(f'Invalid type of `modified_adj`, type {type(adj)}, please check it again.')
 
@@ -131,7 +129,7 @@ class BaseModel:
 
     @abc.abstractmethod
     def fit(self):
-        '''for defense methods'''
+        '''for defense method'''
         raise NotImplementedError
 
     @property
