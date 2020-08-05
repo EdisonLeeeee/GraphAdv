@@ -10,7 +10,7 @@ from graphadv.attack.untargeted.untargeted_attacker import UntargetedAttacker
 from graphadv.utils.surrogate_utils import train_a_surrogate
 from graphadv.utils.graph_utils import likelihood_ratio_filter
 from graphgallery.nn.models import DenseGCN
-from graphgallery import tqdm, asintarr, normalize_adj_tensor, repeat, astensor
+from graphgallery import tqdm, asintarr, normalize_adj_tensor, repeat
 
 
 # cora lr=0.1, citeseer lr=0.01, lambda_=1. reaches best result
@@ -24,7 +24,7 @@ class BaseMeta(UntargetedAttacker):
 
         super().__init__(adj=adj, x=x, labels=labels, seed=seed, name=name, device=device, **kwargs)
         adj, x = self.adj, self.x
-
+        
         idx_train = asintarr(idx_train)
         idx_val = asintarr(idx_val)
         idx_test = asintarr(idx_test)
@@ -34,23 +34,24 @@ class BaseMeta(UntargetedAttacker):
         if use_real_label:
             self_training_labels = labels[idx_unlabeled]
         else:
-            surrogate = DenseGCN(adj, x, labels, device='GPU', norm_x='l1', seed=123)
+            surrogate = DenseGCN(adj, x, labels, device='GPU', norm_x=None, seed=123)
             surrogate.build(16, activations=None)
-            his = surrogate.train(idx_train, verbose=1, epochs=100, save_best=True)
+            his = surrogate.train(idx_train, verbose=1, epochs=200, save_best=False)
             self_training_labels = surrogate.predict(idx_unlabeled).argmax(1)
-
+            
+        print((self_training_labels==labels[idx_unlabeled]).mean())
         self.ll_ratio = None
 
         # mettack can also conduct feature attack
         self.allow_feature_attack = True
 
         with tf.device(self.device):
-            self.idx_train = astensor(idx_train, dtype=self.intx)
-            self.idx_unlabeled = astensor(idx_unlabeled, dtype=self.intx)
-            self.labels_train = astensor(self.labels[idx_train], dtype=self.floatx)
-            self.self_training_labels = astensor(self_training_labels, dtype=self.floatx)
-            self.tf_adj = astensor(adj.A, dtype=self.floatx)
-            self.tf_x = astensor(x, dtype=self.floatx)
+            self.idx_train = tf.convert_to_tensor(idx_train, dtype=self.intx)
+            self.idx_unlabeled = tf.convert_to_tensor(idx_unlabeled, dtype=self.intx)
+            self.labels_train = tf.convert_to_tensor(self.labels[idx_train], dtype=self.floatx)
+            self.self_training_labels = tf.convert_to_tensor(self_training_labels, dtype=self.floatx)
+            self.tf_adj = tf.convert_to_tensor(adj.A, dtype=self.floatx)
+            self.tf_x = tf.convert_to_tensor(x, dtype=self.floatx)
             self.build(hidden_layers=hidden_layers, use_relu=use_relu)
 
             self.adj_changes = tf.Variable(tf.zeros_like(self.tf_adj))
@@ -144,8 +145,8 @@ class Metattack(BaseMeta):
 
     def __init__(self,  adj, x, labels,
                  idx_train, idx_val, idx_test,
-                 learning_rate=0.1, train_epochs=100,
-                 momentum=0.9, lambda_=0.,
+                 learning_rate=0.01, train_epochs=100,
+                 momentum=0.8, lambda_=0.,
                  hidden_layers=[16], use_relu=True, use_real_label=False,
                  seed=None, name=None, device='CPU:0', **kwargs):
 
@@ -162,6 +163,8 @@ class Metattack(BaseMeta):
 
         if lambda_ not in (0., 0.5, 1.):
             raise ValueError('Invalid value of `lanbda_`, allowed values [0: (meta-self), 1: (meta-train), 0.5: (meta-both)].')
+
+
 
     def build(self, hidden_layers, use_relu):
 
@@ -208,12 +211,11 @@ class Metattack(BaseMeta):
         adj_norm = normalize_adj_tensor(adj)
 
         for _ in range(self.train_epochs):
-            weight_grads = self.train_an_epoch(x, adj_norm,
-                                               self.idx_train,
-                                               self.labels_train)
+            weight_grads = self.train_an_epoch(x, adj_norm, self.idx_train, self.labels_train)
 
             for v, g in zip(self.velocities, weight_grads):
                 v.assign(self.momentum * v + g)
+                
             for w, v in zip(self.weights, self.velocities):
                 w.assign_sub(self.learning_rate * v)
 
@@ -236,7 +238,7 @@ class Metattack(BaseMeta):
             logit_unlabeled = tf.gather(output, self.idx_unlabeled)
             loss_labeled = sparse_categorical_crossentropy(self.labels_train, logit_labeled)
             loss_unlabeled = sparse_categorical_crossentropy(self.self_training_labels, logit_unlabeled)
-
+            
             loss_labeled = tf.reduce_mean(loss_labeled)
             loss_unlabeled = tf.reduce_mean(loss_unlabeled)
             attack_loss = self.lambda_ * loss_labeled + (1. - self.lambda_) * loss_unlabeled
@@ -253,7 +255,7 @@ class Metattack(BaseMeta):
 
     def attack(self, n_perturbations=0.05, structure_attack=True, feature_attack=False,
                ll_constraint=False, ll_cutoff=0.004, disable=False):
-
+        
         super().attack(n_perturbations, structure_attack, feature_attack)
 
         if ll_constraint:
@@ -262,18 +264,18 @@ class Metattack(BaseMeta):
 
         if feature_attack and not is_binary(self.x):
             raise ValueError("Attacks on the node features are currently only supported for binary attributes.")
-
+            
         with tf.device(self.device):
             modified_adj, modified_x = self.tf_adj, self.tf_x
-
+            
             for _ in tqdm(range(self.n_perturbations), desc='Peturbing Graph', disable=disable):
-
+                
                 if structure_attack:
                     modified_adj = self.get_perturbed_adj(self.tf_adj, self.adj_changes)
-
+                    
                 if feature_attack:
-                    modified_x = self.get_perturbed_x(self.tf_x, self.x_changes)
-
+                    modified_x = self.get_perturbed_x(self.tf_x, self.x_changes)                    
+                    
                 self.inner_train(modified_adj, modified_x)
 
                 adj_grad, x_grad = self.meta_grad()
@@ -298,6 +300,7 @@ class Metattack(BaseMeta):
                     row, col = divmod(x_meta_argmax.numpy(), self.n_features)
                     self.x_changes[row, col].assign(-2 * modified_x[row, col] + 1)
                     self.attribute_flips.append((row, col))
+
 
 
 ###################### Deprecated  ##########################
