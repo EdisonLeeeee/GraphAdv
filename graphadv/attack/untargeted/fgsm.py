@@ -14,9 +14,8 @@ class FGSM(UntargetedAttacker):
 
         if surrogate is None:
             surrogate = train_a_surrogate(self, 'DenseGCN', idx_train, idx_val, **surrogate_args)
-
-        else:
-            assert isinstance(surrogate, DenseGCN), 'surrogate model should be the instance of `graphgallery.DenseGCN`.'
+        elif not isinstance(surrogate, DenseGCN):
+            raise RuntimeError("surrogate model should be the instance of `graphgallery.nn.DenseGCN`.")
 
         self.allow_feature_attack = True
 
@@ -25,7 +24,6 @@ class FGSM(UntargetedAttacker):
             self.tf_idx_train = astensor(idx_train)
             self.tf_labels = astensor(labels[idx_train])
             self.loss_fn = tf.keras.losses.sparse_categorical_crossentropy
-            
 
     def reset(self):
         super().reset()

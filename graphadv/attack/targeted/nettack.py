@@ -32,14 +32,13 @@ class Nettack(TargetedAttacker):
 
     def __init__(self, adj, x, labels, idx_train=None, idx_val=None, surrogate=None, seed=None, name=None, device='CPU:0', **kwargs):
         super().__init__(adj=adj, x=x, labels=labels, seed=seed, name=name, device=device, **kwargs)
-        
+
         adj, x = self.adj, self.x
 
         if surrogate is None:
             surrogate = train_a_surrogate(self, 'GCN', idx_train, idx_val, **kwargs)
-        else:
-            if not isinstance(surrogate, GCN):
-                raise RuntimeError('surrogate model should be the instance of `graphgallery.GCN`.')
+        elif not isinstance(surrogate, GCN):
+            raise RuntimeError('surrogate model should be the instance of `graphgallery.nn.GCN`.')
 
         if not sp.isspmatrix(x):
             self.x = sp.csr_matrix(x)
@@ -319,10 +318,10 @@ class Nettack(TargetedAttacker):
 
         super().attack(target, n_perturbations, direct_attack, structure_attack, feature_attack)
 
-        if feature_attack:
-            assert is_binary(self.x)
-            
-        if ll_constraint and self.allow_singleton :
+        if feature_attack and not is_binary(self.x):
+            raise RuntimeError("Attacks on the node features are currently only supported for binary attributes.")
+
+        if ll_constraint and self.allow_singleton:
             raise RuntimeError('`ll_constraint` is failed when `allow_singleton=True`, please set `attacker.allow_singleton=False`.')
 
         logits_start = self.compute_logits()

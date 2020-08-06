@@ -18,8 +18,8 @@ class SGA(TargetedAttacker):
 
         if surrogate is None:
             surrogate = train_a_surrogate(self, 'SGC', idx_train, idx_val, **kwargs)
-        else:
-            assert isinstance(surrogate, SGC), 'surrogate model should be the instance of `graphgallery.SGC`.'
+        elif not isinstance(surrogate, SGC):
+            raise RuntimeError("surrogate model should be the instance of `graphgallery.nn.SGC`.")
 
         self.radius = radius
         self.similar_nodes = [np.where(labels == class_)[0] for class_ in range(self.n_classes)]

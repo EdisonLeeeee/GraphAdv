@@ -13,8 +13,8 @@ class FGSM(TargetedAttacker):
 
         if surrogate is None:
             surrogate = train_a_surrogate(self, 'DenseGCN', idx_train, idx_val, **surrogate_args)
-        else:
-            assert isinstance(surrogate, DenseGCN), 'surrogate model should be the instance of `graphgallery.DenseGCN`.'
+        elif not isinstance(surrogate, DenseGCN):
+            raise RuntimeError("surrogate model should be the instance of `graphgallery.nn.DenseGCN`.")
 
         with tf.device(self.device):
             self.surrogate = surrogate

@@ -10,7 +10,7 @@ from graphadv.utils import filter_singletons
 from graphadv.attack.targeted.targeted_attacker import TargetedAttacker
 
 
-class TA_DW(TargetedAttacker):
+class A_DW(TargetedAttacker):
     def __init__(self, adj, name=None, seed=None, **kwargs):
         super().__init__(adj=adj, name=name, seed=seed, **kwargs)
         self.nodes_set = set(range(self.n_nodes))

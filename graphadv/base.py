@@ -6,10 +6,11 @@ import networkx as nx
 import scipy.sparse as sp
 import tensorflow as tf
 
-import graphgallery
-
+from graphadv.utils.type_check import (is_scalar_like,
+                                       is_tensor_or_variable, is_symmetric,
+                                       is_binary, is_self_loops,
+                                       check_and_convert)
 from graphadv import floatx, intx
-from graphadv.utils.type_check import is_scalar_like, is_tensor_or_variable
 from graphadv import flip_adj, flip_x
 
 
@@ -33,10 +34,12 @@ class BaseModel:
             raise ValueError(
                 "Invalid keyword argument(s) in `__init__`: %s" % (unknown_kwargs,))
 
-        # TODO symetric, unweighted and self loops
-        adj = graphgallery.check_and_convert(adj, is_sparse=True)
+        if any((not is_binary(adj), not is_symmetric(adj, is_self_loops(adj)))):
+            raise ValueError('The input adjacency matrix should be symmertic, unweighted and without self loops.')
+
+        adj = check_and_convert(adj, is_sparse=True)
         if x is not None:
-            x = graphgallery.check_and_convert(x, is_sparse=False)
+            x = check_and_convert(x, is_sparse=False)
 
         self.floatx = floatx()
         self.intx = intx()
@@ -164,15 +167,34 @@ class BaseModel:
     def allow_singleton(self, value):
         self.__allow_singleton = value
 
+    @property
+    def reseted(self):
+        return self.__reseted
+
+    @reseted.setter
+    def reseted(self, value):
+        self.__reseted = value
+
     def set_adj(self, adj):
         '''Reset the adjacency matrix'''
-        adj = graphgallery.check_and_convert(adj, is_sparse=True)
+        if any((not is_binary(adj), not is_symmetric(adj, is_self_loops(adj)))):
+            raise ValueError('The input adjacency matrix should be symmertic, unweighted and without self loops.')
+
+        adj = check_and_convert(adj, is_sparse=True)
         self.adj = adj
         self.degree = (adj.sum(1).A1 - adj.diagonal()).astype(self.intx)
         self.n_nodes = adj.shape[0]
         self.n_edges = adj.nnz//2
         if self.graph is not None:
             self.graph = nx.from_scipy_sparse_matrix(adj, create_using=nx.DiGraph)
+
+    def set_x(self, x):
+        '''Reset the feature matrix'''
+        x = check_and_convert(x, is_sparse=False)
+        x_shape = x.shape
+        assert x_shape[0] == self.n_nodes
+        self.x = x
+        self.n_features = x_shape[1]
 
     def show_edge_flips(self, detail=False):
         assert self.labels is not None

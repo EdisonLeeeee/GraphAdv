@@ -24,9 +24,9 @@ class PGDEvasion(UntargetedAttacker):
 
         if surrogate is None:
             surrogate = train_a_surrogate(self, 'DenseGCN', idx_train, **surrogate_args)
-        else:
-            assert isinstance(surrogate, DenseGCN), 'surrogate model should be the instance of `graphgallery.DenseGCN`.'
-        
+        elif not isinstance(surrogate, DenseGCN):
+            raise RuntimeError("surrogate model should be the instance of `graphgallery.nn.DenseGCN`.")
+
         idx_attack = asintarr(idx_attack)
 
         # whether to use the ground-truth label as self-training labels
@@ -34,7 +34,7 @@ class PGDEvasion(UntargetedAttacker):
             self_training_labels = labels[idx_attack]
         else:
             self_training_labels = self.estimate_self_training_labels(surrogate, idx_attack)
-            
+
 #         self_training_labels = np.hstack([labels[idx_train], self_training_labels])
 
         with tf.device(self.device):
@@ -63,18 +63,18 @@ class PGDEvasion(UntargetedAttacker):
         return self_training_labels.astype(self.intx)
 
     def attack(self, n_perturbations=0.05, sample_epochs=20,
-               CW_loss=True, epochs=100, 
+               CW_loss=True, epochs=100,
                structure_attack=True, feature_attack=False, disable=False):
 
         super().attack(n_perturbations, structure_attack, feature_attack)
 
         self.CW_loss = CW_loss
-        
+
         if CW_loss:
             C = 0.01
         else:
             C = 200
-            
+
         with tf.device(self.device):
             for epoch in tqdm(range(epochs), desc='Peturbation Training', disable=disable):
                 gradients = self.compute_gradients(self.idx_attack)
@@ -96,7 +96,7 @@ class PGDEvasion(UntargetedAttacker):
 
         gradients = tape.gradient(loss, self.adj_changes)
         return gradients
-    
+
     @tf.function
     def compute_loss(self, logit):
 
@@ -111,7 +111,7 @@ class PGDEvasion(UntargetedAttacker):
             loss = tf.reduce_mean(loss)
 
         return loss
-    
+
     @tf.function
     def get_perturbed_adj(self):
         adj_triu = tf.linalg.band_part(self.adj_changes, 0, -1) - tf.linalg.band_part(self.adj_changes, 0, 0)
@@ -176,7 +176,7 @@ class PGDEvasion(UntargetedAttacker):
                 best_loss = loss
                 best_s = sampled
 
-        return best_s    
+        return best_s
 
 
 class MinMaxEvasion(PGDEvasion):
@@ -188,7 +188,7 @@ class MinMaxEvasion(PGDEvasion):
 
         super().__init__(adj, x, labels, idx_train=idx_train,
                          idx_attack=idx_attack, use_real_label=use_real_label,
-                         surrogate=surrogate, surrogate_args=surrogate_args, 
+                         surrogate=surrogate, surrogate_args=surrogate_args,
                          seed=seed, device=device, **kwargs)
 
         with tf.device(self.device):
@@ -198,7 +198,7 @@ class MinMaxEvasion(PGDEvasion):
     def reset(self):
         super().reset()
         weights = self.surrogate.weights
-        
+
         # restore surrogate weights
         for w1, w2 in zip(weights, self.stored_weights):
             w1.assign(w2)
@@ -211,14 +211,14 @@ class MinMaxEvasion(PGDEvasion):
                update_per_epoch=20, structure_attack=True, feature_attack=False, disable=False):
 
         super(PGDEvasion, self).attack(n_perturbations, structure_attack, feature_attack)
-        
+
         self.CW_loss = CW_loss
-        
+
         if CW_loss:
             C = 0.01
         else:
             C = 200
-            
+
         with tf.device(self.device):
 
             trainable_variables = self.surrogate.trainable_variables

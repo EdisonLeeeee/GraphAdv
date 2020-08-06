@@ -30,3 +30,4 @@ def is_symmetric(adj):
 
 is_scalar_like = graphgallery.is_scalar_like
 is_tensor_or_variable = graphgallery.is_tensor_or_variable
+check_and_convert = graphgallery.check_and_convert

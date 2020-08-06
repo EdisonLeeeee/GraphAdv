@@ -2,6 +2,7 @@ from graphgallery import config
 set_epsilon = config.set_epsilon
 set_floatx = config.set_floatx
 set_intx = config.set_intx
+epsilon = config.epsilon
 floatx = config.floatx
 intx = config.intx
 

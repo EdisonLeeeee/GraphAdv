@@ -8,7 +8,7 @@ class SVD(Defender):
     def __init__(self, adj, x, labels=None, seed=None, name=None, device='CPU:0', **kwargs):
         super().__init__(adj, x, labels=labels, seed=seed, name=name, device=device, **kwargs)
 
-    def fit(self, k=50, threshold=1e-2, binaryzation=False):
+    def fit(self, k=50, threshold=0.01, binaryzation=False):
         super().fit()
 
         adj = self.adj.asfptype()
@@ -22,7 +22,8 @@ class SVD(Defender):
         adj = sp.csr_matrix(adj)
 
         if binaryzation:
-            adj.data = np.clip(adj.data, 0., 1.)
+            # TODO
+            adj.data[adj.data > 0] = 1.0
 
         self.modified_adj = adj
 

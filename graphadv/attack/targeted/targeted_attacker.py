@@ -19,11 +19,11 @@ class TargetedAttacker(BaseAttacker):
         self.structure_attack = None
         self.feature_attack = None
         self.direct_attack = None
-        self.__reseted = True
+        self.reseted = True
 
     def attack(self, target, n_perturbations, direct_attack, structure_attack, feature_attack):
 
-        if not self.__reseted:
+        if not self.reseted:
             raise RuntimeError('Before calling attack once again, you must reset your attacker. Use `attacker.reset()`.')
 
         if not graphgallery.is_interger_scalar(target):
@@ -51,7 +51,7 @@ class TargetedAttacker(BaseAttacker):
         self.direct_attack = direct_attack
         self.structure_attack = structure_attack
         self.feature_attack = feature_attack
-        self.__reseted = False
+        self.reseted = False
 
     def is_modified_edge(self, u, v):
         if self.direct_attack:

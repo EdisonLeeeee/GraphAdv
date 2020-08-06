@@ -17,11 +17,11 @@ class UntargetedAttacker(BaseAttacker):
         self.n_perturbations = None
         self.structure_attack = None
         self.feature_attack = None
-        self.__reseted = True
+        self.reseted = True
 
     def attack(self, n_perturbations, structure_attack, feature_attack):
 
-        if not self.__reseted:
+        if not self.reseted:
             raise RuntimeError('Before calling attack once again, you must reset your attacker. Use `attacker.reset()`.')
 
         if not (structure_attack or feature_attack):
@@ -40,7 +40,7 @@ class UntargetedAttacker(BaseAttacker):
         self.n_perturbations = n_perturbations
         self.structure_attack = structure_attack
         self.feature_attack = feature_attack
-        self.__reseted = False
+        self.reseted = False
 
     def is_modified_edge(self, u, v):
         if not isinstance(self.structure_flips, dict):

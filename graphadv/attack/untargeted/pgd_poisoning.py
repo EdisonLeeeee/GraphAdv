@@ -18,15 +18,15 @@ class PGDPoisoning(UntargetedAttacker):
 
     def __init__(self, adj, x, labels, idx_train, surrogate=None, surrogate_args={},
                  seed=None, name=None, device='CPU:0', **kwargs):
-        
+
         super().__init__(adj=adj, x=x, labels=labels, seed=seed, name=name, device=device, **kwargs)
         adj, x = self.adj, x
 
         if surrogate is None:
             surrogate = train_a_surrogate(self, 'DenseGCN', idx_train, **surrogate_args)
-        else:
-            assert isinstance(surrogate, DenseGCN), 'surrogate model should be the instance of `graphgallery.DenseGCN`.'
-        
+        elif not isinstance(surrogate, DenseGCN):
+            raise RuntimeError("surrogate model should be the instance of `graphgallery.nn.DenseGCN`.")
+
         idx_attack = asintarr(idx_train)
 
         with tf.device(self.device):
@@ -49,7 +49,7 @@ class PGDPoisoning(UntargetedAttacker):
             self.adj_changes.assign(tf.zeros_like(self.adj_changes))
 
     def attack(self, n_perturbations=0.05, sample_epochs=20, C=0.1,
-               CW_loss=True, epochs=200, 
+               CW_loss=True, epochs=200,
                structure_attack=True, feature_attack=False, disable=False):
 
         super().attack(n_perturbations, structure_attack, feature_attack)
@@ -76,7 +76,7 @@ class PGDPoisoning(UntargetedAttacker):
 
         gradients = tape.gradient(loss, self.adj_changes)
         return gradients
-    
+
     @tf.function
     def compute_loss(self, logit):
 
@@ -87,8 +87,8 @@ class PGDPoisoning(UntargetedAttacker):
         else:
             loss = self.loss_fn(self.labels_attack, logit)
 
-        return tf.reduce_sum(loss)    
-    
+        return tf.reduce_sum(loss)
+
     @tf.function
     def get_perturbed_adj(self):
         adj_triu = tf.linalg.band_part(self.adj_changes, 0, -1) - tf.linalg.band_part(self.adj_changes, 0, 0)
@@ -154,8 +154,8 @@ class PGDPoisoning(UntargetedAttacker):
                 best_s = sampled
 
         return best_s
-    
-    
+
+
 class MinMaxPoisoning(PGDPoisoning):
     '''MinMax cannot ensure that there is not singleton after attack.'''
 
@@ -164,7 +164,7 @@ class MinMaxPoisoning(PGDPoisoning):
                  seed=None, name=None, device='CPU:0', **kwargs):
 
         super().__init__(adj, x, labels, idx_train=idx_train,
-                         surrogate=surrogate, surrogate_args=surrogate_args, 
+                         surrogate=surrogate, surrogate_args=surrogate_args,
                          seed=seed, device=device, **kwargs)
 
         with tf.device(self.device):
@@ -174,7 +174,7 @@ class MinMaxPoisoning(PGDPoisoning):
     def reset(self):
         super().reset()
         weights = self.surrogate.weights
-        
+
         # restore surrogate weights
         for w1, w2 in zip(weights, self.stored_weights):
             w1.assign(w2)
@@ -187,9 +187,9 @@ class MinMaxPoisoning(PGDPoisoning):
                update_per_epoch=20, structure_attack=True, feature_attack=False, disable=False):
 
         super(PGDPoisoning, self).attack(n_perturbations, structure_attack, feature_attack)
-        
+
         self.CW_loss = CW_loss
-        
+
         with tf.device(self.device):
 
             trainable_variables = self.surrogate.trainable_variables
@@ -215,4 +215,3 @@ class MinMaxPoisoning(PGDPoisoning):
 
         gradients = tape.gradient(loss, trainable_variables)
         self.optimizer.apply_gradients(zip(gradients, trainable_variables))
-    

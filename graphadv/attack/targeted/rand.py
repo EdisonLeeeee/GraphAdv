@@ -5,7 +5,7 @@ from graphadv.attack.targeted.targeted_attacker import TargetedAttacker
 from graphgallery import tqdm
 
 
-class TRAND(TargetedAttacker):
+class RAND(TargetedAttacker):
     def __init__(self, adj, graph=None, seed=None, name=None, **kwargs):
         super().__init__(adj, seed=seed, name=name, **kwargs)
 

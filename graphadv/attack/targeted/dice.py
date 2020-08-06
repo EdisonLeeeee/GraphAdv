@@ -5,7 +5,7 @@ from graphadv.attack.targeted.targeted_attacker import TargetedAttacker
 from graphgallery import tqdm
 
 
-class TDICE(TargetedAttacker):
+class DICE(TargetedAttacker):
     def __init__(self, adj, labels, graph=None, seed=None, name=None, **kwargs):
         super().__init__(adj, labels=labels, seed=seed, name=name, **kwargs)
 
