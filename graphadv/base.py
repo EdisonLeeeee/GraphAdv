@@ -34,7 +34,7 @@ class BaseModel:
             raise ValueError(
                 "Invalid keyword argument(s) in `__init__`: %s" % (unknown_kwargs,))
 
-        if any((not is_binary(adj), not is_symmetric(adj, is_self_loops(adj)))):
+        if any((not is_binary(adj), not is_symmetric(adj), is_self_loops(adj))):
             raise ValueError('The input adjacency matrix should be symmertic, unweighted and without self loops.')
 
         adj = check_and_convert(adj, is_sparse=True)

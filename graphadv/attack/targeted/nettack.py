@@ -43,7 +43,7 @@ class Nettack(TargetedAttacker):
         if not sp.isspmatrix(x):
             self.x = sp.csr_matrix(x)
 
-        surrogate_weights = surrogate.np_weights
+        surrogate_weights = surrogate.get_weights()
         assert len(surrogate_weights) == 2, 'surrogate weights are the two layer GCN weights without bias, i.e., W1 and W2.'
 
         # GCN weight matrices
@@ -302,6 +302,11 @@ class Nettack(TargetedAttacker):
         twohop_ixs = np.transpose(A_hat_sq.nonzero())
         degrees = self.modified_adj.sum(0).A1 + 1
 
+        # Ignore warnings:
+        #     NumbaPendingDeprecationWarning: 
+        # Encountered the use of a type that is scheduled for deprecation: type 'reflected set' found for argument 'edges_set' of function 'compute_new_a_hat_uv'.
+
+        # For more information visit http://numba.pydata.org/numba-doc/latest/reference/deprecation.html#deprecation-of-reflection-for-list-and-set-types        
         with warnings.catch_warnings(record=True):
             warnings.filterwarnings(
                 'ignore', '.*Encountered the use of a type that is scheduled for deprecation*')

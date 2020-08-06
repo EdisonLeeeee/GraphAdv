@@ -13,8 +13,8 @@ class JaccardDetection(Defender):
     """ adj must be symmetric!
     
     """
-    def __init__(self, adj, x, labels=None, seed=None, name=None, device='CPU:0', **kwargs):
-        super().__init__(adj, x, labels=labels, seed=seed, name=name, device=device, **kwargs)
+    def __init__(self, adj, x, seed=None, name=None, device='CPU:0', **kwargs):
+        super().__init__(adj, x, seed=seed, name=name, device=device, **kwargs)
         
        
         
@@ -53,8 +53,8 @@ class CosinDetection(Defender):
     """ adj must be symmetric!
     
     """
-    def __init__(self, adj, x, labels=None, seed=None, name=None, device='CPU:0', **kwargs):
-        super().__init__(adj, x, labels=labels, seed=seed, name=name, device=device, **kwargs)
+    def __init__(self, adj, x, seed=None, name=None, device='CPU:0', **kwargs):
+        super().__init__(adj, x, seed=seed, name=name, device=device, **kwargs)
 
     def fit(self, threshold=0.01, disable=False):
         super().fit()
