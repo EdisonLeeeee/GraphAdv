@@ -18,11 +18,15 @@ class SGA(TargetedAttacker):
         super().__init__(adj, x=x, labels=labels, seed=seed, name=name, device=device, **kwargs)
 
         if surrogate is None:
-            surrogate = train_a_surrogate(self, 'SGC', idx_train, idx_val, **kwargs)
+            surrogate = train_a_surrogate(self, 'SGC', idx_train, idx_val, **surrogate_args)
         elif not isinstance(surrogate, SGC):
             raise RuntimeError("surrogate model should be the instance of `graphgallery.nn.SGC`.")
+            
+        if graph is None:
+            graph = nx.from_scipy_sparse_matrix(self.adj, create_using=nx.DiGraph)        
 
         self.radius = radius
+        self.graph = graph
         self.similar_nodes = [np.where(labels == class_)[0] for class_ in range(self.n_classes)]
 
         with tf.device(self.device):
@@ -54,9 +58,10 @@ class SGA(TargetedAttacker):
 
         super().attack(target, n_perturbations, direct_attack, structure_attack, feature_attack)
 
-        logit = self.surrogate.predict(target)
-        logit = logit / logit.sum()
-        self.wrong_label = np.argmax(logit - np.eye(self.n_classes)[self.target_label])
+        logit = self.surrogate.predict(target).ravel()
+        top2 = logit.argsort()[-2:]
+        self.wrong_label = top2[-1] if top2[-1] != self.target_label else top2[0]
+        assert self.wrong_label != self.target_label
         self.subgraph_preprocessing(reduce_nodes)
 
         offset = self.edge_lower_bound
@@ -136,8 +141,8 @@ class SGA(TargetedAttacker):
 
     def ego_subgraph(self):
         '''选取一个二阶子图'''
-        # self.subgraph = nx.ego_graph(self.graph, self.target, self.radius)
-        # return list(self.subgraph.edges()), list(self.subgraph.nodes())
+#         self.subgraph = nx.ego_graph(self.graph, self.target, self.radius)
+#         return list(self.subgraph.edges()), list(self.subgraph.nodes())
         return ego_graph(self.adj, self.target, self.radius)
 
     def construct_sub_adj(self, influencer_nodes, wrong_label_nodes, sub_nodes, sub_edges):
