@@ -1,7 +1,7 @@
 import warnings
 import numpy as np
 import tensorflow as tf
-
+from tensorflow.keras.losses import sparse_categorical_crossentropy
 
 from graphadv.attack.targeted.targeted_attacker import TargetedAttacker
 from graphadv.utils.surrogate_utils import train_a_surrogate
@@ -22,7 +22,7 @@ class GradArgmax(TargetedAttacker):
 
         with tf.device(self.device):
             self.surrogate = surrogate
-            self.loss_fn = tf.keras.losses.sparse_categorical_crossentropy
+            self.loss_fn = sparse_categorical_crossentropy
             self.tf_x = astensor(self.x)
 
     def reset(self):
@@ -70,7 +70,7 @@ class GradArgmax(TargetedAttacker):
         with tf.GradientTape() as tape:
             tape.watch(values)
             logit = self.surrogate([self.tf_x, adj, target_index])
-            loss = self.loss_fn(target_label, logit)
+            loss = self.loss_fn(target_label, logit, from_logits=True)
 
         gradients = tape.gradient(loss, values)
         return gradients

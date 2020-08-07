@@ -1,5 +1,7 @@
 import numpy as np
 import tensorflow as tf
+from tensorflow.keras.losses import sparse_categorical_crossentropy
+
 from graphadv import is_binary
 from graphadv.attack.untargeted.untargeted_attacker import UntargetedAttacker
 from graphadv.utils.surrogate_utils import train_a_surrogate
@@ -23,7 +25,7 @@ class FGSM(UntargetedAttacker):
             self.surrogate = surrogate
             self.tf_idx_train = astensor(idx_train)
             self.tf_labels = astensor(labels[idx_train])
-            self.loss_fn = tf.keras.losses.sparse_categorical_crossentropy
+            self.loss_fn = sparse_categorical_crossentropy
 
     def reset(self):
         super().reset()
@@ -123,7 +125,7 @@ class FGSM(UntargetedAttacker):
         with tf.GradientTape(persistent=True) as tape:
             adj_norm = normalize_adj_tensor(modified_adj)
             logit = self.surrogate([modified_x, adj_norm, index])
-            loss = self.loss_fn(self.tf_labels, logit)
+            loss = self.loss_fn(self.tf_labels, logit, from_logits=True)
 
         adj_grad, x_grad = None, None
         if self.structure_attack:

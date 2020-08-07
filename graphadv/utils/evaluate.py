@@ -1,4 +1,5 @@
 import numpy as np
+from tensorflow.keras.activations import softmax
 from graphgallery.nn.models import (GCN, SGC, GAT, ClusterGCN, RobustGCN, GWNN,
                                     GraphSAGE, GCN_MIX, FastGCN, ChebyNet, DenseGCN,
                                     Deepwalk, Node2vec)
@@ -13,7 +14,7 @@ def evaluate(adj, x, labels, idx_train, idx_val, idx_test, target, retrain_iters
         model = GCN(adj, x, labels, device='GPU:0', seed=123+_, norm_x=norm_x)
         model.build()
         his = model.train(idx_train, idx_val, verbose=0, epochs=100)
-        logit = model.predict(target).ravel()
+        logit = softmax(model.predict(target)).numpy().ravel()
 
         class_distrs.append(logit)
         best_second_class_before = (logit - np.eye(data.n_classes)[labels[target]]).argmax()

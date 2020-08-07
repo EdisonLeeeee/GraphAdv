@@ -5,6 +5,7 @@ from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.activations import softmax, relu
 from tensorflow.keras.losses import sparse_categorical_crossentropy
 
+
 from graphadv import is_binary
 from graphadv.attack.untargeted.untargeted_attacker import UntargetedAttacker
 from graphadv.utils.surrogate_utils import train_a_surrogate
@@ -24,7 +25,7 @@ class BaseMeta(UntargetedAttacker):
 
         super().__init__(adj=adj, x=x, labels=labels, seed=seed, name=name, device=device, **kwargs)
         adj, x = self.adj, self.x
-        
+
         idx_train = asintarr(idx_train)
         idx_val = asintarr(idx_val)
         idx_test = asintarr(idx_test)
@@ -38,8 +39,8 @@ class BaseMeta(UntargetedAttacker):
             surrogate.build(16, activations=None)
             his = surrogate.train(idx_train, verbose=1, epochs=200, save_best=False)
             self_training_labels = surrogate.predict(idx_unlabeled).argmax(1)
-            
-        print((self_training_labels==labels[idx_unlabeled]).mean())
+
+        print((self_training_labels == labels[idx_unlabeled]).mean())
         self.ll_ratio = None
 
         # mettack can also conduct feature attack
@@ -53,6 +54,7 @@ class BaseMeta(UntargetedAttacker):
             self.tf_adj = tf.convert_to_tensor(adj.A, dtype=self.floatx)
             self.tf_x = tf.convert_to_tensor(x, dtype=self.floatx)
             self.build(hidden_layers=hidden_layers, use_relu=use_relu)
+            self.loss_fn = sparse_categorical_crossentropy
 
             self.adj_changes = tf.Variable(tf.zeros_like(self.tf_adj))
             self.x_changes = tf.Variable(tf.zeros_like(self.tf_x))
@@ -164,8 +166,6 @@ class Metattack(BaseMeta):
         if lambda_ not in (0., 0.5, 1.):
             raise ValueError('Invalid value of `lanbda_`, allowed values [0: (meta-self), 1: (meta-train), 0.5: (meta-both)].')
 
-
-
     def build(self, hidden_layers, use_relu):
 
         weights, velocities = [], []
@@ -199,7 +199,7 @@ class Metattack(BaseMeta):
         with tf.GradientTape() as tape:
             output = self.do_forward(x, adj)
             logit = tf.gather(output, index)
-            loss = sparse_categorical_crossentropy(labels, logit)
+            loss = self.loss_fn(labels, logit)
             loss = tf.reduce_mean(loss)
 
         weight_grads = tape.gradient(loss, self.weights)
@@ -215,7 +215,7 @@ class Metattack(BaseMeta):
 
             for v, g in zip(self.velocities, weight_grads):
                 v.assign(self.momentum * v + g)
-                
+
             for w, v in zip(self.weights, self.velocities):
                 w.assign_sub(self.learning_rate * v)
 
@@ -236,9 +236,9 @@ class Metattack(BaseMeta):
             output = self.do_forward(modified_x, adj_norm)
             logit_labeled = tf.gather(output, self.idx_train)
             logit_unlabeled = tf.gather(output, self.idx_unlabeled)
-            loss_labeled = sparse_categorical_crossentropy(self.labels_train, logit_labeled)
-            loss_unlabeled = sparse_categorical_crossentropy(self.self_training_labels, logit_unlabeled)
-            
+            loss_labeled = self.loss_fn(self.labels_train, logit_labeled)
+            loss_unlabeled = self.loss_fn(self.self_training_labels, logit_unlabeled)
+
             loss_labeled = tf.reduce_mean(loss_labeled)
             loss_unlabeled = tf.reduce_mean(loss_unlabeled)
             attack_loss = self.lambda_ * loss_labeled + (1. - self.lambda_) * loss_unlabeled
@@ -255,7 +255,7 @@ class Metattack(BaseMeta):
 
     def attack(self, n_perturbations=0.05, structure_attack=True, feature_attack=False,
                ll_constraint=False, ll_cutoff=0.004, disable=False):
-        
+
         super().attack(n_perturbations, structure_attack, feature_attack)
 
         if ll_constraint:
@@ -264,18 +264,18 @@ class Metattack(BaseMeta):
 
         if feature_attack and not is_binary(self.x):
             raise ValueError("Attacks on the node features are currently only supported for binary attributes.")
-            
+
         with tf.device(self.device):
             modified_adj, modified_x = self.tf_adj, self.tf_x
-            
+
             for _ in tqdm(range(self.n_perturbations), desc='Peturbing Graph', disable=disable):
-                
+
                 if structure_attack:
                     modified_adj = self.get_perturbed_adj(self.tf_adj, self.adj_changes)
-                    
+
                 if feature_attack:
-                    modified_x = self.get_perturbed_x(self.tf_x, self.x_changes)                    
-                    
+                    modified_x = self.get_perturbed_x(self.tf_x, self.x_changes)
+
                 self.inner_train(modified_adj, modified_x)
 
                 adj_grad, x_grad = self.meta_grad()
@@ -300,7 +300,6 @@ class Metattack(BaseMeta):
                     row, col = divmod(x_meta_argmax.numpy(), self.n_features)
                     self.x_changes[row, col].assign(-2 * modified_x[row, col] + 1)
                     self.attribute_flips.append((row, col))
-
 
 
 ###################### Deprecated  ##########################
@@ -390,8 +389,8 @@ class Metattack(BaseMeta):
 #                 output = self.do_forward(modified_x, adj_norm)
 #                 logit_labeled = tf.gather(output, self.idx_train)
 #                 logit_unlabeled = tf.gather(output, self.idx_unlabeled)
-#                 loss_labeled = sparse_categorical_crossentropy(self.labels_train, logit_labeled)
-#                 loss_unlabeled = sparse_categorical_crossentropy(self.self_training_labels, logit_unlabeled)
+#                 loss_labeled = self.loss_fn(self.labels_train, logit_labeled)
+#                 loss_unlabeled = self.loss_fn(self.self_training_labels, logit_unlabeled)
 #                 loss_labeled = tf.reduce_mean(loss_labeled)
 #                 loss_unlabeled = tf.reduce_mean(loss_unlabeled)
 #                 attack_loss = self.lambda_ * loss_labeled + (1. - self.lambda_) * loss_unlabeled

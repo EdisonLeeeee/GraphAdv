@@ -1,5 +1,7 @@
 import numpy as np
 import tensorflow as tf
+from tensorflow.keras.losses import sparse_categorical_crossentropy
+
 from graphadv.attack.targeted.targeted_attacker import TargetedAttacker
 from graphadv.utils.surrogate_utils import train_a_surrogate
 from graphadv import is_binary
@@ -23,7 +25,7 @@ class IGA(TargetedAttacker):
 
         with tf.device(self.device):
             self.surrogate = surrogate
-            self.loss_fn = tf.keras.losses.sparse_categorical_crossentropy
+            self.loss_fn = sparse_categorical_crossentropy
 
     def reset(self):
         super().reset()
@@ -151,7 +153,7 @@ class IGA(TargetedAttacker):
         with tf.GradientTape(persistent=True) as tape:
             adj_norm = normalize_adj_tensor(modified_adj)
             logit = self.surrogate([modified_x, adj_norm, target_index])
-            loss = self.loss_fn(target_label, logit)
+            loss = self.loss_fn(target_label, logit, from_logits=True)
 
         adj_grad, x_grad = None, None
 

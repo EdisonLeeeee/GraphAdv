@@ -3,6 +3,7 @@ import tensorflow as tf
 import networkx as nx
 from numba import njit
 
+from tensorflow.keras.losses import sparse_categorical_crossentropy
 from graphadv.attack.targeted.targeted_attacker import TargetedAttacker
 from graphadv.utils.surrogate_utils import train_a_surrogate
 
@@ -31,7 +32,7 @@ class SGA(TargetedAttacker):
             self.XW = X @ W
             self.surrogate = surrogate
             self.SGC = SGConvolution(radius)
-            self.loss_fn = tf.keras.losses.sparse_categorical_crossentropy
+            self.loss_fn = sparse_categorical_crossentropy
             del X, W
 
     def reset(self):
@@ -54,6 +55,7 @@ class SGA(TargetedAttacker):
         super().attack(target, n_perturbations, direct_attack, structure_attack, feature_attack)
 
         logit = self.surrogate.predict(target)
+        logit = logit / logit.sum()
         self.wrong_label = np.argmax(logit - np.eye(self.n_classes)[self.target_label])
         self.subgraph_preprocessing(reduce_nodes)
 

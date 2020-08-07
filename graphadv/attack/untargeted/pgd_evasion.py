@@ -1,6 +1,8 @@
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.losses import sparse_categorical_crossentropy
+from tensorflow.keras.activations import softmax
 
 from graphadv.attack.untargeted.untargeted_attacker import UntargetedAttacker
 from graphadv.utils.surrogate_utils import train_a_surrogate
@@ -43,7 +45,7 @@ class PGDEvasion(UntargetedAttacker):
             self.tf_adj = astensor(self.adj.A)
             self.tf_x = astensor(self.x)
             self.complementary = tf.ones_like(self.tf_adj) - tf.eye(self.n_nodes) - 2. * self.tf_adj
-            self.loss_fn = tf.keras.losses.sparse_categorical_crossentropy
+            self.loss_fn = sparse_categorical_crossentropy
             self.adj_changes = tf.Variable(tf.zeros(adj.shape, dtype=self.floatx))
             self.surrogate = surrogate
 
@@ -92,6 +94,7 @@ class PGDEvasion(UntargetedAttacker):
             adj = self.get_perturbed_adj()
             adj_norm = normalize_adj_tensor(adj)
             logit = self.surrogate([self.tf_x, adj_norm, idx])
+            logit = softmax(logit)
             loss = self.compute_loss(logit)
 
         gradients = tape.gradient(loss, self.adj_changes)
@@ -170,6 +173,7 @@ class PGDEvasion(UntargetedAttacker):
                 adj = self.get_perturbed_adj()
                 adj_norm = normalize_adj_tensor(adj)
                 logit = self.surrogate([self.tf_x, adj_norm, self.idx_attack])
+                logit = softmax(logit)
                 loss = self.compute_loss(logit)
 
             if best_loss < loss:
@@ -240,6 +244,7 @@ class MinMaxEvasion(PGDEvasion):
             adj = self.get_perturbed_adj()
             adj_norm = normalize_adj_tensor(adj)
             logit = self.surrogate([self.tf_x, adj_norm, idx])
+            logit = softmax(logit)
             loss = self.compute_loss(logit)
 
         gradients = tape.gradient(loss, trainable_variables)
