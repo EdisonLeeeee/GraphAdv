@@ -18,8 +18,23 @@ def train_a_surrogate(attacker, surrogate, idx_train, idx_val=None, **kwargs):
     else:
         model.build()
         
+#     # if save_best and idx_val is not specified, do not use save best.
+#     # but if save_best is specified or save_best is not specified and idx_val is specified,
+#     # then use save best
+#     if 'save_best' not in kwargs and 'idx_val' not in kwargs:
+#         save_best = False
+#     else:
+#         save_best = kwargs.pop('save_best', True)
+        
     his = model.train(idx_train, idx_val, verbose=0,
-                      epochs=kwargs.pop('epochs', 200),
+                      epochs=kwargs.pop('epochs', 100),
                       save_best=kwargs.pop('save_best', True))
+    
+    # check if some invalid arguments
+    allowed_kwargs = set([])
+    unknown_kwargs = set(kwargs.keys()) - allowed_kwargs
+    if unknown_kwargs:
+        raise ValueError(
+            "Invalid keyword argument(s) in `__init__`: %s" % (unknown_kwargs,))    
 
     return model

@@ -7,7 +7,7 @@ from tensorflow.keras.activations import softmax
 from graphadv.attack.untargeted.untargeted_attacker import UntargetedAttacker
 from graphadv.utils.surrogate_utils import train_a_surrogate
 from graphgallery.nn.models import DenseGCN
-from graphgallery import tqdm, asintarr, normalize_adj_tensor, astensor
+from graphgallery import tqdm, asintarr, normalize_adj_tensor, astensor, normalize_x
 
 
 class PGDPoisoning(UntargetedAttacker):
@@ -22,7 +22,7 @@ class PGDPoisoning(UntargetedAttacker):
                  seed=None, name=None, device='CPU:0', **kwargs):
 
         super().__init__(adj=adj, x=x, labels=labels, seed=seed, name=name, device=device, **kwargs)
-        adj, x = self.adj, x
+        adj, x = self.adj, self.x
 
         if surrogate is None:
             surrogate = train_a_surrogate(self, 'DenseGCN', idx_train, **surrogate_args)
@@ -30,12 +30,15 @@ class PGDPoisoning(UntargetedAttacker):
             raise RuntimeError("surrogate model should be the instance of `graphgallery.nn.DenseGCN`.")
 
         idx_attack = asintarr(idx_train)
-
+        # if the surrogate model enforce normalize on the input features
+        if surrogate.norm_x:
+            x = normalize_x(x, surrogate.norm_x)
+            
         with tf.device(self.device):
             self.idx_attack = astensor(idx_attack)
             self.labels_attack = astensor(labels[idx_attack])
             self.tf_adj = astensor(self.adj.A)
-            self.tf_x = astensor(self.x)
+            self.tf_x = astensor(x)
             self.complementary = tf.ones_like(self.tf_adj) - tf.eye(self.n_nodes) - 2. * self.tf_adj
             self.loss_fn = sparse_categorical_crossentropy
             self.adj_changes = tf.Variable(tf.zeros(adj.shape, dtype=self.floatx))

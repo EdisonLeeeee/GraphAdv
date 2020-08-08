@@ -13,25 +13,27 @@ from graphgallery import tqdm, astensor
 
 
 class SGA(TargetedAttacker):
-    def __init__(self, adj, x, labels, idx_train=None, idx_val=None, graph=None, radius=2,
+    def __init__(self, adj, x, labels, idx_train=None, radius=2,
                  seed=None, name=None, device='CPU:0', surrogate=None, surrogate_args={}, **kwargs):
+        
         super().__init__(adj, x=x, labels=labels, seed=seed, name=name, device=device, **kwargs)
 
         if surrogate is None:
-            surrogate = train_a_surrogate(self, 'SGC', idx_train, idx_val, **surrogate_args)
+            surrogate = train_a_surrogate(self, 'SGC', idx_train, **surrogate_args)
         elif not isinstance(surrogate, SGC):
             raise RuntimeError("surrogate model should be the instance of `graphgallery.nn.SGC`.")
             
-        if graph is None:
-            graph = nx.from_scipy_sparse_matrix(self.adj, create_using=nx.DiGraph)        
-
         self.radius = radius
-        self.graph = graph
         self.similar_nodes = [np.where(labels == class_)[0] for class_ in range(self.n_classes)]
 
+        # if the surrogate model enforce normalize on the input features
+        x = self.x
+        if surrogate.norm_x:
+            x = normalize_x(x, surrogate.norm_x)
+            
         with tf.device(self.device):
             W, b = surrogate.weights
-            X = astensor(self.x)
+            X = astensor(x)
             self.b = b
             self.XW = X @ W
             self.surrogate = surrogate

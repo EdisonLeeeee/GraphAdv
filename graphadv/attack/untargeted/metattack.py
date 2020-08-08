@@ -11,7 +11,7 @@ from graphadv.attack.untargeted.untargeted_attacker import UntargetedAttacker
 from graphadv.utils.surrogate_utils import train_a_surrogate
 from graphadv.utils.graph_utils import likelihood_ratio_filter
 from graphgallery.nn.models import DenseGCN
-from graphgallery import tqdm, asintarr, normalize_adj_tensor, repeat
+from graphgallery import tqdm, asintarr, normalize_adj_tensor, repeat, normalize_x
 
 
 # cora lr=0.1, citeseer lr=0.01, lambda_=1. reaches best result
@@ -46,6 +46,10 @@ class BaseMeta(UntargetedAttacker):
         # mettack can also conduct feature attack
         self.allow_feature_attack = True
 
+        # if the surrogate model enforce normalize on the input features
+        if surrogate.norm_x:
+            x = normalize_x(x, surrogate.norm_x)
+            
         with tf.device(self.device):
             self.idx_train = tf.convert_to_tensor(idx_train, dtype=self.intx)
             self.idx_unlabeled = tf.convert_to_tensor(idx_unlabeled, dtype=self.intx)

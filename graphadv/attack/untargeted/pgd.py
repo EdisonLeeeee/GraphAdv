@@ -1,16 +1,16 @@
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.losses import sparse_categorical_crossentropy
+from tensorflow.keras.losses import SparseCategoricalCrossentropy
 from tensorflow.keras.activations import softmax
 
 from graphadv.attack.untargeted.untargeted_attacker import UntargetedAttacker
 from graphadv.utils.surrogate_utils import train_a_surrogate
 from graphgallery.nn.models import DenseGCN
-from graphgallery import tqdm, asintarr, normalize_adj_tensor, astensor
+from graphgallery import tqdm, asintarr, normalize_adj_tensor, astensor, normalize_x
 
 
-class PGDEvasion(UntargetedAttacker):
+class PGD(UntargetedAttacker):
 
     '''
         PGD cannot ensure that there is not singleton after attack.
@@ -18,38 +18,44 @@ class PGDEvasion(UntargetedAttacker):
 
     '''
 
-    def __init__(self, adj, x, labels, idx_train, idx_attack,
-                 use_real_label=False, surrogate=None, surrogate_args={},
+    def __init__(self, adj, x, labels, idx_train, idx_unlabeled=None,
+                 surrogate=None, surrogate_args={},
                  seed=None, name=None, device='CPU:0', **kwargs):
+        
         super().__init__(adj=adj, x=x, labels=labels, seed=seed, name=name, device=device, **kwargs)
-        adj, x = self.adj, x
+        
+        adj, x = self.adj, self.x
 
         if surrogate is None:
             surrogate = train_a_surrogate(self, 'DenseGCN', idx_train, **surrogate_args)
         elif not isinstance(surrogate, DenseGCN):
             raise RuntimeError("surrogate model should be the instance of `graphgallery.nn.DenseGCN`.")
 
-        idx_attack = asintarr(idx_attack)
+        # poisoning attack in DeepRobust
+        if idx_unlabeled is None:
+            idx_attack = idx_train
+            labels_attack = labels[idx_train]
+        else: # Evasion attack in original paper
+            idx_unlabeled = asintarr(idx_unlabeled)
+            self_training_labels = self.estimate_self_training_labels(surrogate, idx_unlabeled)
+            idx_attack = np.hstack([idx_train, idx_unlabeled])
+            labels_attack = np.hstack([labels[idx_train], self_training_labels])
 
-        # whether to use the ground-truth label as self-training labels
-        if use_real_label:
-            self_training_labels = labels[idx_attack]
-        else:
-            self_training_labels = self.estimate_self_training_labels(surrogate, idx_attack)
-
-#         self_training_labels = np.hstack([labels[idx_train], self_training_labels])
-
+        # if the surrogate model enforce normalize on the input features
+        if surrogate.norm_x:
+            x = normalize_x(x, surrogate.norm_x)
+            
         with tf.device(self.device):
             self.idx_attack = astensor(idx_attack)
-            self.labels_attack = astensor(self_training_labels)
+            self.labels_attack = astensor(labels_attack)
             self.tf_adj = astensor(self.adj.A)
-            self.tf_x = astensor(self.x)
+            self.tf_x = astensor(x)
             self.complementary = tf.ones_like(self.tf_adj) - tf.eye(self.n_nodes) - 2. * self.tf_adj
-            self.loss_fn = sparse_categorical_crossentropy
+            self.loss_fn = SparseCategoricalCrossentropy()
             self.adj_changes = tf.Variable(tf.zeros(adj.shape, dtype=self.floatx))
             self.surrogate = surrogate
 
-            # used for CW_loss=True
+            # used for `CW_loss=True`
             self.label_matrix = tf.gather(tf.eye(self.n_classes), self.labels_attack)
             self.range_idx = tf.range(idx_attack.size, dtype=self.intx)
             self.indices_real = tf.stack([self.range_idx, self.labels_attack], axis=1)
@@ -64,8 +70,7 @@ class PGDEvasion(UntargetedAttacker):
         self_training_labels = surrogate.predict(idx_attack).argmax(1)
         return self_training_labels.astype(self.intx)
 
-    def attack(self, n_perturbations=0.05, sample_epochs=20,
-               CW_loss=True, epochs=100,
+    def attack(self, n_perturbations=0.05, sample_epochs=20, CW_loss=True, epochs=100,
                structure_attack=True, feature_attack=False, disable=False):
 
         super().attack(n_perturbations, structure_attack, feature_attack)
@@ -73,7 +78,7 @@ class PGDEvasion(UntargetedAttacker):
         self.CW_loss = CW_loss
 
         if CW_loss:
-            C = 0.01
+            C = 0.1
         else:
             C = 200
 
@@ -111,7 +116,7 @@ class PGDEvasion(UntargetedAttacker):
             loss = tf.reduce_sum(loss)
         else:
             loss = self.loss_fn(self.labels_attack, logit)
-            loss = tf.reduce_mean(loss)
+            logit = tf.argmax(logit, axis=1, output_type=self.intx)
 
         return loss
 
@@ -180,18 +185,17 @@ class PGDEvasion(UntargetedAttacker):
                 best_loss = loss
                 best_s = sampled
 
-        return best_s
+        return best_s.numpy()
 
-
-class MinMaxEvasion(PGDEvasion):
+    
+class MinMax(PGD):
     '''MinMax cannot ensure that there is not singleton after attack.'''
 
-    def __init__(self, adj, x, labels, idx_train, idx_attack, use_real_label=False,
+    def __init__(self, adj, x, labels, idx_train, idx_unlabeled=None,
                  surrogate=None, surrogate_args={}, surrogate_lr=5e-3,
                  seed=None, name=None, device='CPU:0', **kwargs):
 
-        super().__init__(adj, x, labels, idx_train=idx_train,
-                         idx_attack=idx_attack, use_real_label=use_real_label,
+        super().__init__(adj, x, labels, idx_train=idx_train, idx_unlabeled=idx_unlabeled, 
                          surrogate=surrogate, surrogate_args=surrogate_args,
                          seed=seed, device=device, **kwargs)
 
@@ -214,12 +218,12 @@ class MinMaxEvasion(PGDEvasion):
     def attack(self, n_perturbations=0.05, sample_epochs=20,  CW_loss=True, epochs=100,
                update_per_epoch=20, structure_attack=True, feature_attack=False, disable=False):
 
-        super(PGDEvasion, self).attack(n_perturbations, structure_attack, feature_attack)
+        super(PGD, self).attack(n_perturbations, structure_attack, feature_attack)
 
         self.CW_loss = CW_loss
 
         if CW_loss:
-            C = 0.01
+            C = 0.1
         else:
             C = 200
 
@@ -249,3 +253,4 @@ class MinMaxEvasion(PGDEvasion):
 
         gradients = tape.gradient(loss, trainable_variables)
         self.optimizer.apply_gradients(zip(gradients, trainable_variables))
+    

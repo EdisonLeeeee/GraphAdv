@@ -30,33 +30,38 @@ class Nettack(TargetedAttacker):
     Technical University of Munich
     """
 
-    def __init__(self, adj, x, labels, idx_train=None, idx_val=None, surrogate=None, seed=None, name=None, device='CPU:0', **kwargs):
+    def __init__(self, adj, x, labels, idx_train=None, surrogate=None, surrogate_args={}, 
+                 seed=None, name=None, device='CPU:0', **kwargs):
         super().__init__(adj=adj, x=x, labels=labels, seed=seed, name=name, device=device, **kwargs)
 
         adj, x = self.adj, self.x
-
+        
+        # nettack can conduct feature attack
+        self.allow_feature_attack = True
+        
         if surrogate is None:
-            surrogate = train_a_surrogate(self, 'GCN', idx_train, idx_val, **kwargs)
+            surrogate = train_a_surrogate(self, 'GCN', idx_train, **surrogate_args)
         elif not isinstance(surrogate, GCN):
-            raise RuntimeError('surrogate model should be the instance of `graphgallery.nn.GCN`.')
-
-        if not sp.isspmatrix(x):
-            self.x = sp.csr_matrix(x)
+            raise RuntimeError('surrogate model should be the instance of `graphgallery.nn.models.GCN`.')
+            
+        # if the surrogate model enforce normalize on the input features
+        if surrogate.norm_x:
+            x = normalize_x(x, surrogate.norm_x)
+            
+        self.sparse_x = sp.csr_matrix(x)
 
         surrogate_weights = surrogate.get_weights()
-        assert len(surrogate_weights) == 2, 'surrogate weights are the two layer GCN weights without bias, i.e., W1 and W2.'
+        assert len(surrogate_weights) == 2, 'surrogate weights are the weights of two layer GCN without bias, i.e., W1 and W2.'
 
         # GCN weight matrices
         W1, W2 = surrogate_weights
         self.W = W1 @ W2
-        # only nettack can conduct feature attack
-        self.allow_feature_attack = True
-        self.cooc_matrix = (self.x.T @ self.x).tocoo()
+        self.cooc_matrix = (self.sparse_x.T @ self.sparse_x).tocoo()
 
     def reset(self):
         super().reset()
         self.modified_adj = self.adj.tolil()
-        self.modified_x = self.x.tolil()
+        self.modified_x = self.sparse_x.tolil()
         self.adj_norm = normalize_adj(self.modified_adj).tolil()
 
         self.structure_flips = []

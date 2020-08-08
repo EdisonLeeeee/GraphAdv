@@ -10,12 +10,12 @@ from graphgallery import tqdm, astensor, normalize_adj_tensor
 
 
 class FGSM(UntargetedAttacker):
-    def __init__(self, adj, x, labels, idx_train=None, idx_val=None,
-                 seed=None, name=None, device='CPU:0', surrogate=None, surrogate_args={}, **kwargs):
+    def __init__(self, adj, x, labels, idx_train=None, surrogate=None, surrogate_args={},
+                 seed=None, name=None, device='CPU:0', **kwargs):
         super().__init__(adj, x=x, labels=labels, seed=seed, name=name, device=device, **kwargs)
 
         if surrogate is None:
-            surrogate = train_a_surrogate(self, 'DenseGCN', idx_train, idx_val, **surrogate_args)
+            surrogate = train_a_surrogate(self, 'DenseGCN', idx_train, **surrogate_args)
         elif not isinstance(surrogate, DenseGCN):
             raise RuntimeError("surrogate model should be the instance of `graphgallery.nn.DenseGCN`.")
 
@@ -32,9 +32,14 @@ class FGSM(UntargetedAttacker):
         self.structure_flips = []
         self.attribute_flips = []
 
+        # if the surrogate model enforce normalize on the input features
+        x = self.x
+        if self.surrogate.norm_x:
+            x = normalize_x(x, self.surrogate.norm_x)
+            
         with tf.device(self.device):
             self.modified_adj = tf.Variable(self.adj.A, dtype=self.floatx)
-            self.modified_x = tf.Variable(self.x, dtype=self.floatx)
+            self.modified_x = tf.Variable(x, dtype=self.floatx)
 
     def attack(self, n_perturbations=0.05, symmetric=True,
                structure_attack=True, feature_attack=False, disable=False):

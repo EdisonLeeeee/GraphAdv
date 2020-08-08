@@ -9,19 +9,24 @@ from graphgallery import tqdm, astensor, normalize_adj_tensor
 
 
 class FGSM(TargetedAttacker):
-    def __init__(self, adj, x, labels, idx_train=None, idx_val=None,
+    def __init__(self, adj, x, labels, idx_train=None,
                  seed=None, name=None, device='CPU:0', surrogate=None, surrogate_args={}, **kwargs):
         super().__init__(adj, x=x, labels=labels, seed=seed, name=name, device=device, **kwargs)
 
         if surrogate is None:
-            surrogate = train_a_surrogate(self, 'DenseGCN', idx_train, idx_val, **surrogate_args)
+            surrogate = train_a_surrogate(self, 'DenseGCN', idx_train, **surrogate_args)
         elif not isinstance(surrogate, DenseGCN):
             raise RuntimeError("surrogate model should be the instance of `graphgallery.nn.DenseGCN`.")
 
+        # if the surrogate model enforce normalize on the input features
+        x = self.x
+        if surrogate.norm_x:
+            x = normalize_x(x, surrogate.norm_x)
+            
         with tf.device(self.device):
             self.surrogate = surrogate
             self.loss_fn = sparse_categorical_crossentropy
-            self.tf_x = astensor(self.x)
+            self.tf_x = astensor(x)
 
     def reset(self):
         super().reset()
