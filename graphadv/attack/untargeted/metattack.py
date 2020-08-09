@@ -47,8 +47,7 @@ class BaseMeta(UntargetedAttacker):
         self.allow_feature_attack = True
 
         # if the surrogate model enforce normalize on the input features
-        if surrogate.norm_x:
-            x = normalize_x(x, surrogate.norm_x)
+
             
         with tf.device(self.device):
             self.idx_train = tf.convert_to_tensor(idx_train, dtype=self.intx)

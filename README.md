@@ -10,14 +10,16 @@
 ---
 
 <!-- [![PyPI Version][pypi-image]][pypi-url] -->
-TensorFlow 2 implementation of state-of-the-arts graph adversarial attack and defense models (methods).
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+TensorFlow 2 implementation of state-of-the-arts graph adversarial attack and defense models (methods). This repo is build on another graph-based repository [GraphGallery](https://github.com/EdisonLeeeee/GraphGallery), You can browse it for more details.
 
 # Requirements
 + python>=3.7
 + tensorflow>=2.1 (2.1 is recommended)
 + networkx>=2.3
 + scipy>=1.4.1
-+ sklearn>=0.23.1
++ sklearn>=0.22
 + numpy>=1.17.4
 + numba>=0.48
 + graphgallery
