@@ -7,7 +7,7 @@ from tensorflow.keras.activations import softmax
 from graphadv.attack.untargeted.untargeted_attacker import UntargetedAttacker
 from graphadv.utils.surrogate_utils import train_a_surrogate
 from graphgallery.nn.models import DenseGCN
-from graphgallery import tqdm, asintarr, normalize_adj_tensor, astensor, normalize_x
+from graphgallery import tqdm, asintarr, normalize_adj_tensor, astensor
 
 
 class PGDPoisoning(UntargetedAttacker):
@@ -30,9 +30,6 @@ class PGDPoisoning(UntargetedAttacker):
             raise RuntimeError("surrogate model should be the instance of `graphgallery.nn.DenseGCN`.")
 
         idx_attack = asintarr(idx_train)
-        # if the surrogate model enforce normalize on the input features
-        if surrogate.norm_x:
-            x = normalize_x(x, surrogate.norm_x)
             
         with tf.device(self.device):
             self.idx_attack = astensor(idx_attack)

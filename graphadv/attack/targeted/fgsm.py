@@ -18,11 +18,6 @@ class FGSM(TargetedAttacker):
         elif not isinstance(surrogate, DenseGCN):
             raise RuntimeError("surrogate model should be the instance of `graphgallery.nn.DenseGCN`.")
 
-        # if the surrogate model enforce normalize on the input features
-        x = self.x
-        if surrogate.norm_x:
-            x = normalize_x(x, surrogate.norm_x)
-            
         with tf.device(self.device):
             self.surrogate = surrogate
             self.loss_fn = sparse_categorical_crossentropy

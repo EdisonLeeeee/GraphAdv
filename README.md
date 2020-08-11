@@ -11,6 +11,9 @@
 
 <!-- [![PyPI Version][pypi-image]][pypi-url] -->
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+![](https://img.shields.io/github/forks/EdisonLeeeee/GraphAdv)
+![](https://img.shields.io/github/stars/EdisonLeeeee/GraphAdv)
+![](https://img.shields.io/github/issues/EdisonLeeeee/GraphAdv)
 
 TensorFlow 2 implementation of state-of-the-arts graph adversarial attack and defense models (methods). This repo is build on another graph-based repository [GraphGallery](https://github.com/EdisonLeeeee/GraphGallery), You can browse it for more details.
 

@@ -6,7 +6,7 @@ from graphadv.attack.targeted.targeted_attacker import TargetedAttacker
 from graphadv.utils.surrogate_utils import train_a_surrogate
 from graphadv import is_binary
 from graphgallery.nn.models import DenseGCN
-from graphgallery import tqdm, normalize_adj_tensor, astensor, normalize_x
+from graphgallery import tqdm, normalize_adj_tensor, astensor
 
 
 class IGA(TargetedAttacker):
@@ -22,8 +22,6 @@ class IGA(TargetedAttacker):
             raise RuntimeError("surrogate model should be the instance of `graphgallery.nn.DenseGCN`.")
 
         self.allow_feature_attack = True
-
-
             
         with tf.device(self.device):
             self.surrogate = surrogate
@@ -35,11 +33,6 @@ class IGA(TargetedAttacker):
         self.structure_flips = []
         self.attribute_flips = []
         
-        # if the surrogate model enforce normalize on the input features
-        x = self.x
-        if self.surrogate.norm_x:
-            x = normalize_x(x, self.surrogate.norm_x)
-            
         with tf.device(self.device):
             self.modified_adj = tf.Variable(self.adj.A, dtype=self.floatx)
             self.modified_x = tf.Variable(x, dtype=self.floatx)

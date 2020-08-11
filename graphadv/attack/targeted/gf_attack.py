@@ -10,7 +10,8 @@ from graphadv.attack.targeted.nettack import compute_alpha, update_Sx, compute_l
 
 class GFA(TargetedAttacker):
     """
-    T=128 for citeseer and pubmed, T=_N//2 for cora to reproduce results in paper.
+    T=128 for citeseer and pubmed, T=_N//2 for cora to reproduce results in pape
+    r.
     """
 
     def __init__(self, adj, x, K=2, T=128, seed=None, name=None, device='CPU:0', **kwargs):
@@ -101,7 +102,7 @@ class GFA(TargetedAttacker):
                 u, v = filtered_edges[best_edge_ix]
 
             self.modified_adj[(u, v)] = self.modified_adj[(v, u)] = 1. - self.modified_adj[(u, v)]
-            self.structure_flips[(u, v)] = _
+            self.structure_flips[(u, v)] = 1.0
 
             if ll_constraint:
                 # Update likelihood ratio test values

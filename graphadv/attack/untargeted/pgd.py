@@ -7,7 +7,7 @@ from tensorflow.keras.activations import softmax
 from graphadv.attack.untargeted.untargeted_attacker import UntargetedAttacker
 from graphadv.utils.surrogate_utils import train_a_surrogate
 from graphgallery.nn.models import DenseGCN
-from graphgallery import tqdm, asintarr, normalize_adj_tensor, astensor, normalize_x
+from graphgallery import tqdm, asintarr, normalize_adj_tensor, astensor
 
 
 class PGD(UntargetedAttacker):
@@ -40,10 +40,6 @@ class PGD(UntargetedAttacker):
             self_training_labels = self.estimate_self_training_labels(surrogate, idx_unlabeled)
             idx_attack = np.hstack([idx_train, idx_unlabeled])
             labels_attack = np.hstack([labels[idx_train], self_training_labels])
-
-        # if the surrogate model enforce normalize on the input features
-        if surrogate.norm_x:
-            x = normalize_x(x, surrogate.norm_x)
             
         with tf.device(self.device):
             self.idx_attack = astensor(idx_attack)

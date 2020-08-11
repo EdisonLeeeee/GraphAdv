@@ -26,11 +26,6 @@ class SGA(TargetedAttacker):
         self.radius = radius
         self.similar_nodes = [np.where(labels == class_)[0] for class_ in range(self.n_classes)]
 
-        # if the surrogate model enforce normalize on the input features
-        x = self.x
-        if surrogate.norm_x:
-            x = normalize_x(x, surrogate.norm_x)
-            
         with tf.device(self.device):
             W, b = surrogate.weights
             X = astensor(x)

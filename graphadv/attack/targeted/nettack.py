@@ -44,10 +44,6 @@ class Nettack(TargetedAttacker):
         elif not isinstance(surrogate, GCN):
             raise RuntimeError('surrogate model should be the instance of `graphgallery.nn.models.GCN`.')
             
-        # if the surrogate model enforce normalize on the input features
-        if surrogate.norm_x:
-            x = normalize_x(x, surrogate.norm_x)
-            
         self.sparse_x = sp.csr_matrix(x)
 
         surrogate_weights = surrogate.get_weights()
