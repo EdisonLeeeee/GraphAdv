@@ -11,7 +11,7 @@ from graphadv.attack.untargeted.untargeted_attacker import UntargetedAttacker
 from graphadv.utils.surrogate_utils import train_a_surrogate
 from graphadv.utils.graph_utils import likelihood_ratio_filter
 from graphgallery.nn.models import DenseGCN
-from graphgallery import tqdm, asintarr, normalize_adj_tensor, repeat
+from graphgallery import tqdm, asintarr, normalize_adj_tensor, astensor
 
 
 # cora lr=0.1, citeseer lr=0.01, lambda_=1. reaches best result
@@ -24,7 +24,7 @@ class BaseMeta(UntargetedAttacker):
                  seed=None, name=None, device='CPU:0', **kwargs):
 
         super().__init__(adj=adj, x=x, labels=labels, seed=seed, name=name, device=device, **kwargs)
-        adj, x = self.adj, self.x
+        adj, x, labels = self.adj, self.x, self.labels
 
         idx_train = asintarr(idx_train)
         idx_val = asintarr(idx_val)
@@ -35,25 +35,25 @@ class BaseMeta(UntargetedAttacker):
         if use_real_label:
             self_training_labels = labels[idx_unlabeled]
         else:
-            surrogate = DenseGCN(adj, x, labels, device='GPU', norm_x=None, seed=123)
-            surrogate.build(16, activations=None)
-            his = surrogate.train(idx_train, verbose=1, epochs=200, save_best=False)
+            surrogate = DenseGCN(adj, x, labels, device='GPU', norm_x=None, seed=None)
+            surrogate.build(16, activations='relu' if use_relu else None)
+            his = surrogate.train(idx_train, verbose=0, epochs=100, save_best=False)
             self_training_labels = surrogate.predict(idx_unlabeled).argmax(1)
 
-        print((self_training_labels == labels[idx_unlabeled]).mean())
         self.ll_ratio = None
 
         # mettack can also conduct feature attack
         self.allow_feature_attack = True
 
         with tf.device(self.device):
-            self.idx_train = tf.convert_to_tensor(idx_train, dtype=self.intx)
-            self.idx_unlabeled = tf.convert_to_tensor(idx_unlabeled, dtype=self.intx)
-            self.labels_train = tf.convert_to_tensor(self.labels[idx_train], dtype=self.floatx)
-            self.self_training_labels = tf.convert_to_tensor(self_training_labels, dtype=self.floatx)
-            self.tf_adj = tf.convert_to_tensor(adj.A, dtype=self.floatx)
-            self.tf_x = tf.convert_to_tensor(x, dtype=self.floatx)
-            self.build(hidden_layers=hidden_layers, use_relu=use_relu)
+            self.idx_train = astensor(idx_train, dtype=self.intx)
+            self.idx_unlabeled = astensor(idx_unlabeled, dtype=self.intx)
+            self.labels_train = astensor(self.labels[idx_train], dtype=self.floatx)
+            self.self_training_labels = astensor(self_training_labels, dtype=self.floatx)
+            self.tf_adj = astensor(adj.A, dtype=self.floatx)
+            self.tf_x = astensor(x, dtype=self.floatx)
+            self.build(hidden_layers=hidden_layers)
+            self.use_relu = use_relu
             self.loss_fn = sparse_categorical_crossentropy
 
             self.adj_changes = tf.Variable(tf.zeros_like(self.tf_adj))
@@ -103,8 +103,8 @@ class BaseMeta(UntargetedAttacker):
     @tf.function
     def get_perturbed_adj(self, adj, adj_changes):
         adj_changes_square = adj_changes - tf.linalg.band_part(adj_changes, 0, 0)
-        adj_changes_sym = adj_changes_square + tf.transpose(adj_changes_square)
-        clipped_adj_changes = self.clip(adj_changes_sym)
+#         adj_changes_sym = adj_changes_square + tf.transpose(adj_changes_square)
+        clipped_adj_changes = self.clip(adj_changes_square)
         return adj + clipped_adj_changes
 
     @tf.function
@@ -113,9 +113,12 @@ class BaseMeta(UntargetedAttacker):
 
     def do_forward(self, x, adj):
         h = x
-        for w, act in zip(self.weights, self.activations):
-            h = act(adj @ h @ w)
-        return h
+        for w in self.weights:
+            h = adj @ h @ w
+            if self.use_relu:
+                h = relu(h)
+                
+        return softmax(h)
 
     def structure_score(self, modified_adj, adj_grad, ll_constraint=None, ll_cutoff=None):
         adj_meta_grad = adj_grad * (-2. * modified_adj + 1.)
@@ -148,7 +151,7 @@ class Metattack(BaseMeta):
     def __init__(self,  adj, x, labels,
                  idx_train, idx_val, idx_test,
                  learning_rate=0.01, train_epochs=100,
-                 momentum=0.8, lambda_=0.,
+                 momentum=0.9, lambda_=0.,
                  hidden_layers=[16], use_relu=True, use_real_label=False,
                  seed=None, name=None, device='CPU:0', **kwargs):
 
@@ -166,7 +169,7 @@ class Metattack(BaseMeta):
         if lambda_ not in (0., 0.5, 1.):
             raise ValueError('Invalid value of `lanbda_`, allowed values [0: (meta-self), 1: (meta-train), 0.5: (meta-both)].')
 
-    def build(self, hidden_layers, use_relu):
+    def build(self, hidden_layers):
 
         weights, velocities = [], []
         zeros_initializer = zeros()
@@ -184,7 +187,6 @@ class Metattack(BaseMeta):
             pre_hid = hid
 
         self.weights, self.velocities = weights, velocities
-        self.activations = [relu if use_relu else lambda x: x] * len(hidden_layers) + [softmax]
 
     def initialize(self):
         w_initializer = glorot_uniform()
@@ -236,18 +238,18 @@ class Metattack(BaseMeta):
             output = self.do_forward(modified_x, adj_norm)
             logit_labeled = tf.gather(output, self.idx_train)
             logit_unlabeled = tf.gather(output, self.idx_unlabeled)
+            
             loss_labeled = self.loss_fn(self.labels_train, logit_labeled)
             loss_unlabeled = self.loss_fn(self.self_training_labels, logit_unlabeled)
 
-            loss_labeled = tf.reduce_mean(loss_labeled)
-            loss_unlabeled = tf.reduce_mean(loss_unlabeled)
-            attack_loss = self.lambda_ * loss_labeled + (1. - self.lambda_) * loss_unlabeled
-
+            attack_loss = self.lambda_ * tf.reduce_mean(loss_labeled) + (1 - self.lambda_) * tf.reduce_mean(loss_unlabeled)
+        
         adj_grad, x_grad = None, None
 
         if self.structure_attack:
             adj_grad = tape.gradient(attack_loss, self.adj_changes)
 
+        
         if self.feature_attack:
             x_grad = tape.gradient(attack_loss, self.x_changes)
 
@@ -267,14 +269,16 @@ class Metattack(BaseMeta):
 
         with tf.device(self.device):
             modified_adj, modified_x = self.tf_adj, self.tf_x
-
+            adj_changes, x_changes = self.adj_changes, self.x_changes
+            structure_flips, attribute_flips = self.structure_flips, self.attribute_flips
+            
             for _ in tqdm(range(self.n_perturbations), desc='Peturbing Graph', disable=disable):
 
                 if structure_attack:
-                    modified_adj = self.get_perturbed_adj(self.tf_adj, self.adj_changes)
+                    modified_adj = self.get_perturbed_adj(self.tf_adj, adj_changes)
 
                 if feature_attack:
-                    modified_x = self.get_perturbed_x(self.tf_x, self.x_changes)
+                    modified_x = self.get_perturbed_x(self.tf_x, x_changes)
 
                 self.inner_train(modified_adj, modified_x)
 
@@ -292,160 +296,160 @@ class Metattack(BaseMeta):
                 if tf.reduce_max(adj_meta_score) >= tf.reduce_max(x_meta_score):
                     adj_meta_argmax = tf.argmax(adj_meta_score)
                     row, col = divmod(adj_meta_argmax.numpy(), self.n_nodes)
-                    self.adj_changes[row, col].assign(-2. * modified_adj[row, col] + 1.)
-                    self.adj_changes[col, row].assign(-2. * modified_adj[col, row] + 1.)
-                    self.structure_flips.append((row, col))
+                    adj_changes[row, col].assign(-2. * modified_adj[row, col] + 1.)
+                    adj_changes[col, row].assign(-2. * modified_adj[col, row] + 1.)
+                    structure_flips.append((row, col))
                 else:
                     x_meta_argmax = tf.argmax(x_meta_score)
                     row, col = divmod(x_meta_argmax.numpy(), self.n_features)
-                    self.x_changes[row, col].assign(-2 * modified_x[row, col] + 1)
-                    self.attribute_flips.append((row, col))
+                    x_changes[row, col].assign(-2 * modified_x[row, col] + 1)
+                    attribute_flips.append((row, col))
+                    
+                    
+class MetaApprox(BaseMeta):
+
+    def __init__(self,  adj, x, labels,
+                 idx_train, idx_val, idx_test,
+                 learning_rate=0.01, train_epochs=100, lambda_=1.,
+                 hidden_layers=[16], use_relu=True, use_real_label=False,
+                 seed=None, name=None, device='CPU:0', **kwargs):
+
+        self.learning_rate = learning_rate
+        self.train_epochs = train_epochs
+        self.lambda_ = lambda_
+
+        if lambda_ not in (0., 0.5, 1.):
+            raise ValueError('Invalid value of `lanbda_`, allowed values [0: (meta-self), 1: (meta-train), 0.5: (meta-both)].')
+            
+        super().__init__(adj, x, labels,
+                         idx_train, idx_val, idx_test,
+                         hidden_layers=hidden_layers, use_relu=use_relu,
+                         use_real_label=use_real_label,
+                         seed=seed, name=name, device=device, **kwargs)
 
 
-###################### Deprecated  ##########################
-# class MetaApprox(BaseMeta):
 
-#     def __init__(self,  adj, x, labels,
-#                  idx_train, idx_val, idx_test,
-#                  learning_rate=0.01, train_epochs=100, lambda_=1.,
-#                  hidden_layers=[16], use_relu=True, use_real_label=False,
-#                  seed=None, name=None, device='CPU:0', **kwargs):
+    def build(self, hidden_layers):
 
-#         self.learning_rate = learning_rate
-#         self.train_epochs = train_epochs
-#         self.lambda_ = lambda_
+        weights = []
+        zeros_initializer = zeros()
 
-#         if lambda_ not in (0., 0.5, 1.):
-#             raise ValueError('Invalid value of `lanbda_`, allowed values [0: (meta-self), 1: (meta-train), 0.5: (meta-both)].')
+        pre_hid = self.n_features
+        for hid in hidden_layers + [self.n_classes]:
+            shape = (pre_hid, hid)
+            # use zeros_initializer temporary to save time
+            weight = tf.Variable(zeros_initializer(shape=shape, dtype=self.floatx))
+            weights.append(weight)
+            pre_hid = hid
 
-#         super().__init__(adj, x, labels,
-#                          idx_train, idx_val, idx_test,
-#                          hidden_layers=hidden_layers, use_relu=use_relu,
-#                          use_real_label=use_real_label,
-#                          seed=seed, name=name, device=device, **kwargs)
+        self.weights = weights
+        self.adj_grad_sum = tf.Variable(tf.zeros_like(self.tf_adj))
+        self.x_grad_sum = tf.Variable(tf.zeros_like(self.tf_x))
+        self.optimizer = Adam(self.learning_rate, epsilon=1e-8)
 
-#     def build(self, hidden_layers, use_relu):
+    def initialize(self):
 
-#         weights, biases = [], []
-#         zeros_initializer = zeros()
+        w_initializer = glorot_uniform()
+        zeros_initializer = zeros()
 
-#         pre_hid = self.n_features
-#         for hid in hidden_layers + [self.n_classes]:
-#             shape = (pre_hid, hid)
-#             # use zeros_initializer temporary to save time
-#             weight = tf.Variable(zeros_initializer(shape=shape, dtype=self.floatx))
-#             bias = tf.Variable(zeros_initializer(shape=(hid,), dtype=self.floatx))
+        for w in self.weights:
+            w.assign(w_initializer(w.shape))
 
-#             weights.append(weight)
-#             biases.append(bias)
+        if self.structure_attack:
+            self.adj_grad_sum.assign(zeros_initializer(self.adj_grad_sum.shape))
 
-#             pre_hid = hid
+        if self.feature_attack:
+            self.x_grad_sum.assign(zeros_initializer(self.x_grad_sum.shape))
 
-#         self.weights, self.biases = weights, biases
-#         self.activations = [relu if use_relu else None] * len(hidden_layers) + [softmax]
-#         self.adj_grad_sum = tf.Variable(tf.zeros_like(self.tf_adj))
-#         self.feature_grad_sum = tf.Variable(tf.zeros_like(self.tf_x))
-#         self.optimizer = Adam(self.learning_rate, epsilon=1e-8)
+        # reset optimizer
+        for var in self.optimizer.variables():
+            var.assign(tf.zeros_like(var))
 
-#     def initialize(self):
+    @tf.function
+    def meta_grad(self):
+        self.initialize()
 
-#         w_initializer = glorot_uniform()
-#         zeros_initializer = zeros()
+        modified_adj, modified_x = self.tf_adj, self.tf_x
+        adj_grad_sum, x_grad_sum = self.adj_grad_sum, self.x_grad_sum
+        optimizer = self.optimizer
 
-#         for w, b in zip(self.weights, self.biases):
-#             w.assign(w_initializer(w.shape))
-#             b.assign(w_initializer(b.shape))
+        for _ in tf.range(self.train_epochs):
 
-#         if self.structure_attack:
-#             self.adj_grad_sum.assign(zeros_initializer(self.adj_grad_sum.shape))
+            with tf.GradientTape(persistent=True) as tape:
+                if self.structure_attack:
+                    modified_adj = self.get_perturbed_adj(self.tf_adj, self.adj_changes)
 
-#         if self.feature_attack:
-#             self.feature_grad_sum.assign(zeros_initializer(self.feature_grad_sum.shape))
+                if self.feature_attack:
+                    modified_x = self.get_perturbed_x(self.tf_x, self.x_changes)
 
-#         # reset optimizer
-#         for var in self.optimizer.variables():
-#             var.assign(tf.zeros_like(var))
+                adj_norm = normalize_adj_tensor(modified_adj)
+                output = self.do_forward(modified_x, adj_norm)
+                logit_labeled = tf.gather(output, self.idx_train)
+                logit_unlabeled = tf.gather(output, self.idx_unlabeled)
 
-#     @tf.function
-#     def meta_grad(self):
-#         self.initialize()
+                loss_labeled = self.loss_fn(self.labels_train, logit_labeled)
+                loss_unlabeled = self.loss_fn(self.self_training_labels, logit_unlabeled)
 
-#         adj_grad_sum, feature_grad_sum = self.adj_grad_sum, self.feature_grad_sum
-#         modified_adj, modified_x = self.tf_adj, self.tf_x
-#         optimizer = self.optimizer
+                attack_loss = self.lambda_ * tf.reduce_mean(loss_labeled) + (1 - self.lambda_) * tf.reduce_mean(loss_unlabeled)
 
-#         for _ in tf.range(self.train_epochs):
-#             with tf.GradientTape(persistent=True) as tape:
+            adj_grad, x_grad = None, None
 
-#                 if self.structure_attack:
-#                     tape.watch(self.adj_changes)
-#                     modified_adj = self.get_perturbed_adj(self.tf_adj, self.adj_changes)
+            gradients = tape.gradient(loss_labeled, self.weights)
+            optimizer.apply_gradients(zip(gradients, self.weights))
 
-#                 if self.feature_attack:
-#                     tape.watch(self.feature_changes)
-#                     modified_x = self.get_perturbed_x(self.tf_x, self.feature_changes)
+            if self.structure_attack:
+                adj_grad = tape.gradient(attack_loss, self.adj_changes)
+                adj_grad_sum.assign_add(adj_grad)
 
-#                 adj_norm = normalize_adj_tensor(modified_adj)
-#                 output = self.do_forward(modified_x, adj_norm)
-#                 logit_labeled = tf.gather(output, self.idx_train)
-#                 logit_unlabeled = tf.gather(output, self.idx_unlabeled)
-#                 loss_labeled = self.loss_fn(self.labels_train, logit_labeled)
-#                 loss_unlabeled = self.loss_fn(self.self_training_labels, logit_unlabeled)
-#                 loss_labeled = tf.reduce_mean(loss_labeled)
-#                 loss_unlabeled = tf.reduce_mean(loss_unlabeled)
-#                 attack_loss = self.lambda_ * loss_labeled + (1. - self.lambda_) * loss_unlabeled
+            if self.feature_attack:
+                x_grad = tape.gradient(attack_loss, self.x_changes)
+                x_grad_sum.assign_add(x_grad)
 
-#             trainable_variables = self.weights + self.biases
-#             gradients = tape.gradient(loss_labeled, trainable_variables)
-#             optimizer.apply_gradients(zip(gradients, trainable_variables))
+            del tape
 
-#             if self.structure_attack:
-#                 adj_grad = tape.gradient(attack_loss, self.adj_changes)
-#                 adj_grad_sum.assign_add(adj_grad)
+        return adj_grad_sum, x_grad_sum
 
-#             if self.feature_attack:
-#                 feature_grad = tape.gradient(attack_loss, self.feature_changes)
-#                 feature_grad_sum.assign_add(feature_grad)
+    def attack(self, n_perturbations=0.05, structure_attack=True, feature_attack=False,
+               ll_constraint=False, ll_cutoff=0.004, disable=False):
 
-#             del tape
+        super().attack(n_perturbations, structure_attack, feature_attack)
 
-#         return adj_grad_sum, feature_grad_sum
+        if ll_constraint:
+            raise NotImplementedError('`log_likelihood_constraint` has not been well tested.'
+                                      ' Please set `ll_constraint=False` to achieve a better performance.')
 
-#     def attack(self, n_perturbations=0.05, structure_attack=True, feature_attack=False,
-#                ll_constraint=False, ll_cutoff=0.004, disable=False):
-#         super().attack(n_perturbations, structure_attack, feature_attack)
+        if feature_attack and not is_binary(self.x):
+            raise ValueError("Attacks on the node features are currently only supported for binary attributes.")
 
-#         if ll_constraint:
-#             raise NotImplementedError('`log_likelihood_constraint` has not been well tested. Please set `ll_constraint=False` to achieve a better performance.')
+        with tf.device(self.device):
+            modified_adj, modified_x = self.tf_adj, self.tf_x
+            adj_changes, x_changes = self.adj_changes, self.x_changes
+            structure_flips, attribute_flips = self.structure_flips, self.attribute_flips
 
-#         if feature_attack:
-#             assert is_binary(self.x)
+            for _ in tqdm(range(self.n_perturbations), desc='Peturbing Graph', disable=disable):
 
-#         for _ in tqdm(range(self.n_perturbations), desc='Peturbing Graph', disable=disable):
+                adj_grad, x_grad = self.meta_grad()
 
-#             with tf.device(self.device):
+                adj_meta_score = tf.constant(0.0)
+                x_meta_score = tf.constant(0.0)
 
-#                 adj_grad, feature_grad = self.meta_grad()
+                if structure_attack:
+                    modified_adj = self.get_perturbed_adj(self.tf_adj, adj_changes)
+                    adj_meta_score = self.structure_score(modified_adj, adj_grad, ll_constraint, ll_cutoff)
 
-#                 adj_meta_score = tf.constant(0.0)
-#                 feature_meta_score = tf.constant(0.0)
+                if feature_attack:
+                    modified_x = self.get_perturbed_x(self.tf_x, x_changes)
+                    x_meta_score = self.feature_score(modified_x, feature_grad)
 
-#                 if structure_attack:
-#                     modified_adj = self.get_perturbed_adj(self.tf_adj, self.adj_changes)
-#                     adj_meta_score = self.structure_score(modified_adj, adj_grad, ll_constraint, ll_cutoff)
-
-#                 if feature_attack:
-#                     modified_x = self.get_perturbed_x(self.tf_x, self.feature_changes)
-#                     feature_meta_score = self.feature_score(modified_x, feature_grad)
-
-#                 if tf.reduce_max(adj_meta_score) >= tf.reduce_max(feature_meta_score):
-#                     adj_meta_argmax = tf.argmax(adj_meta_score)
-#                     row, col = divmod(adj_meta_argmax.numpy(), self.n_nodes)
-#                     self.adj_changes[row, col].assign(-2. * modified_adj[row, col] + 1.)
-#                     self.adj_changes[col, row].assign(-2. * modified_adj[row, col] + 1.)
-#                     self.structure_flips.append((row, col))
-#                 else:
-#                     feature_meta_argmax = tf.argmax(feature_meta_score)
-#                     row, col = divmod(feature_meta_argmax.numpy(), self.n_features)
-#                     self.feature_changes[row, col].assign(-2 * modified_x[row, col] + 1)
-#                     self.attribute_flips.append((row, col))
+                if tf.reduce_max(adj_meta_score) >= tf.reduce_max(x_meta_score):
+                    adj_meta_argmax = tf.argmax(adj_meta_score)
+                    row, col = divmod(adj_meta_argmax.numpy(), self.n_nodes)
+                    adj_changes[row, col].assign(-2. * modified_adj[row, col] + 1.)
+                    adj_changes[col, row].assign(-2. * modified_adj[col, row] + 1.)
+                    structure_flips.append((row, col))
+                else:
+                    x_meta_argmax = tf.argmax(x_meta_score)
+                    row, col = divmod(x_meta_argmax.numpy(), self.n_features)
+                    x_changes[row, col].assign(-2 * modified_x[row, col] + 1)
+                    attribute_flips.append((row, col))
+                    

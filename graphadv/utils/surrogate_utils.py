@@ -11,6 +11,7 @@ def train_a_surrogate(attacker, surrogate, idx_train, idx_val=None, **kwargs):
 
     print(f'=== {attacker.name}: Train a surrogate model `{surrogate}` from scratch ===')
     model = eval(surrogate)(attacker.adj, attacker.x, attacker.labels, seed=attacker.seed,
+                            name=attacker.name + '.'  + surrogate,
                             norm_x=kwargs.pop('norm_x', None),
                             device=kwargs.pop('device', attacker.device))
     if surrogate!= 'SGC':
