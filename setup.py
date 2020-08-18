@@ -11,9 +11,11 @@ install_requires = [
     'tensorflow>=2.1.0',
     'numpy>=1.17.4',
     'texttable>=1.6.2',
-    'numba>=0.46.0',
+    'numba==0.46.0',
+    'llvmlite==0.30',
     'tqdm>=4.40.2',
     'scikit_learn>=0.22',
+    'graphgallery',
 ]
 
 setup(

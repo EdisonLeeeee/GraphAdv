@@ -110,7 +110,7 @@ class SGA(TargetedAttacker):
     def SGC_conv(self, XW, adj):
         return self.SGC([XW, adj])
 
-    def compute_gradient(self, eps=2.24, norm=False):
+    def compute_gradient(self, eps=5.0, norm=False):
 
         edge_weights = self.edge_weights
         non_edge_weights = self.non_edge_weights
