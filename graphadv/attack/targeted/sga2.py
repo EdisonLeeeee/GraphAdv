@@ -13,7 +13,7 @@ from graphgallery import tqdm, astensor, ego_graph
 
 
 class SGA(TargetedAttacker):
-    def __init__(self, adj, x, labels, idx_train=None, radius=2,
+    def __init__(self, adj, x, labels, idx_train=None, hops=2,
                  seed=None, name=None, device='CPU:0', surrogate=None, surrogate_args={}, **kwargs):
         
         super().__init__(adj, x=x, labels=labels, seed=seed, name=name, device=device, **kwargs)
@@ -23,7 +23,7 @@ class SGA(TargetedAttacker):
         elif not isinstance(surrogate, SGC):
             raise RuntimeError("surrogate model should be the instance of `graphgallery.nn.SGC`.")
             
-        self.radius = radius
+        self.hops = hops
         self.similar_nodes = [np.where(labels == class_)[0] for class_ in range(self.n_classes)]
 
         with tf.device(self.device):
@@ -32,7 +32,7 @@ class SGA(TargetedAttacker):
             self.b = b
             self.XW = X @ W
             self.surrogate = surrogate
-            self.SGC = SGConvolution(radius)
+            self.SGC = SGConvolution(hops)
             self.loss_fn = sparse_categorical_crossentropy
 
     def reset(self):
@@ -132,7 +132,7 @@ class SGA(TargetedAttacker):
         return gradients
 
     def ego_subgraph(self):
-        return ego_graph(self.adj, self.target, self.radius)
+        return ego_graph(self.adj, self.target, self.hops)
 
     def construct_sub_adj(self, influencer_nodes, wrong_label_nodes, sub_nodes, sub_edges):
         length = len(wrong_label_nodes)
