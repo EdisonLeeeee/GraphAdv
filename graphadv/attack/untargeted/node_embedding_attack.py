@@ -9,7 +9,10 @@ from graphadv.utils.estimate_utils import (estimate_loss_with_delta_eigenvals,
 from graphadv.utils.graph_utils import edges_to_sparse
 
 
-class A_DW(UntargetedAttacker):
+class NodeEmbeddingAttack(UntargetedAttacker):
+    """
+    
+    """
     def __init__(self, adj, name=None, seed=None, **kwargs):
         super().__init__(adj=adj, name=name, seed=seed, **kwargs)
 
@@ -17,7 +20,7 @@ class A_DW(UntargetedAttacker):
                addition=False, removel=True, structure_attack=True, feature_attack=False):
 
         if not (addition or removel):
-            raise RuntimeError('Edge addition and removel cannot be conducted simultaneously.')
+            raise RuntimeError('Either edge addition or removel setting should be used.')
 
         super().attack(n_perturbations, structure_attack, feature_attack)
         n_perturbations = self.n_perturbations
@@ -39,7 +42,7 @@ class A_DW(UntargetedAttacker):
         delta_w = 1. - 2 * adj[candidates[:, 0], candidates[:, 1]].A1
 
         # generalized eigenvalues/eigenvectors
-        # whether to use sparse formate
+        # whether to use sparse form
         if k is None:
             deg_matrix = np.diag(self.degree).astype('float64', copy=False)
             vals_org, vecs_org = spl.eigh(adj.toarray(), deg_matrix)

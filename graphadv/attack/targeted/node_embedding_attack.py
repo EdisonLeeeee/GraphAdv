@@ -10,10 +10,16 @@ from graphadv.utils import filter_singletons
 from graphadv.attack.targeted.targeted_attacker import TargetedAttacker
 
 
-class A_DW(TargetedAttacker):
-    def __init__(self, adj, name=None, seed=None, **kwargs):
+class NodeEmbeddingAttack(TargetedAttacker):
+    """ This implementation is not exactly right.
+    
+    """
+    def __init__(self, adj, k=50, name=None, seed=None, **kwargs):
         super().__init__(adj=adj, name=name, seed=seed, **kwargs)
         self.nodes_set = set(range(self.n_nodes))
+        
+        deg_matrix = sp.diags(self.degree).astype('float64')
+        self.vals_org, self.vecs_org = sp.linalg.eigsh(self.adj.astype('float64'), k=k, M=deg_matrix)
 
     def attack(self, target, n_perturbations=None, dim=32, window_size=5,
                n_neg_samples=3, direct_attack=True, structure_attack=True, feature_attack=False):
@@ -22,7 +28,7 @@ class A_DW(TargetedAttacker):
         n_perturbations = self.n_perturbations
 
         n_nodes = self.n_nodes
-        adj = self.adj
+        adj = self.adj.astype('float64')
 
         if direct_attack:
             influencer_nodes = [target]
@@ -36,7 +42,12 @@ class A_DW(TargetedAttacker):
         if not self.allow_singleton:
             candidates = filter_singletons(candidates, adj)
 
-        loss_for_candidates = estimate_loss_with_perturbation_gradient(candidates, adj, window_size,
-                                                                       dim, n_neg_samples)
-        self.structure_flips = candidates[loss_for_candidates.argsort()[:n_perturbations]]
-#         self.structure_flips = candidates[loss_for_candidates.argsort()[-n_perturbations:]]
+        delta_w = 1. - 2 * adj[candidates[:, 0], candidates[:, 1]].A1
+        loss_for_candidates = estimate_loss_with_delta_eigenvals(candidates, delta_w,
+                                                                 self.vals_org, self.vecs_org,
+                                                                 self.n_nodes,
+                                                                 dim, window_size)
+        
+        self.structure_flips = candidates[loss_for_candidates.argsort()[-n_perturbations:]]
+#         print(loss_for_candidates)
+#         plt.hist(loss_for_candidates)

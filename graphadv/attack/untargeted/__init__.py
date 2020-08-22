@@ -2,7 +2,7 @@ from graphadv.attack.untargeted.untargeted_attacker import UntargetedAttacker
 
 from graphadv.attack.untargeted.rand import RAND
 from graphadv.attack.untargeted.dice import DICE
-from graphadv.attack.untargeted.A_DW import A_DW
+from graphadv.attack.untargeted.node_embedding_attack import NodeEmbeddingAttack
 from graphadv.attack.untargeted.degree import Deg
 from graphadv.attack.untargeted.pgd import PGD, MinMax
 from graphadv.attack.untargeted.pgd_poisoning import PGDPoisoning, MinMaxPoisoning

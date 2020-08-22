@@ -23,7 +23,7 @@ def estimate_loss_with_perturbation_gradient(candidates, adj_matrix, window_size
 
     with tf.GradientTape() as tape:
         tape.watch(adj_matrix)
-        deg = tf.reduce_sum(adj_matrix, 1)
+        deg = tf.reduce_sum(adj_matrix, axis=1)
         volume = tf.reduce_sum(adj_matrix)
 
         transition_matrix = adj_matrix / deg[:, None]
