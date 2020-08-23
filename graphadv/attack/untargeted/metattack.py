@@ -3,7 +3,7 @@ import tensorflow as tf
 from tensorflow.keras.initializers import glorot_uniform, zeros
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.activations import softmax, relu
-from tensorflow.keras.losses import sparse_categorical_crossentropy
+from tensorflow.keras.losses import SparseCategoricalCrossentropy
 
 
 from graphadv import is_binary
@@ -54,7 +54,7 @@ class BaseMeta(UntargetedAttacker):
             self.tf_x = astensor(x, dtype=self.floatx)
             self.build(hidden_layers=hidden_layers)
             self.use_relu = use_relu
-            self.loss_fn = sparse_categorical_crossentropy
+            self.loss_fn = SparseCategoricalCrossentropy(from_logits=True)
 
             self.adj_changes = tf.Variable(tf.zeros_like(self.tf_adj))
             self.x_changes = tf.Variable(tf.zeros_like(self.tf_x))
@@ -111,14 +111,13 @@ class BaseMeta(UntargetedAttacker):
     def get_perturbed_x(self, x, x_changes):
         return x + self.clip(x_changes)
 
-    def do_forward(self, x, adj):
+    def forward(self, x, adj):
         h = x
         for w in self.weights:
             h = adj @ h @ w
             if self.use_relu:
                 h = relu(h)
-                
-        return softmax(h)
+        return h
 
     def structure_score(self, modified_adj, adj_grad, ll_constraint=None, ll_cutoff=None):
         adj_meta_grad = adj_grad * (-2. * modified_adj + 1.)
@@ -197,12 +196,11 @@ class Metattack(BaseMeta):
             wv.assign(zeros_initializer(wv.shape))
 
     @tf.function
-    def train_an_epoch(self, x, adj, index, labels):
+    def train_step(self, x, adj, index, labels):
         with tf.GradientTape() as tape:
-            output = self.do_forward(x, adj)
+            output = self.forward(x, adj)
             logit = tf.gather(output, index)
             loss = self.loss_fn(labels, logit)
-            loss = tf.reduce_mean(loss)
 
         weight_grads = tape.gradient(loss, self.weights)
         return weight_grads
@@ -213,7 +211,7 @@ class Metattack(BaseMeta):
         adj_norm = normalize_adj_tensor(adj)
 
         for _ in range(self.train_epochs):
-            weight_grads = self.train_an_epoch(x, adj_norm, self.idx_train, self.labels_train)
+            weight_grads = self.train_step(x, adj_norm, self.idx_train, self.labels_train)
 
             for v, g in zip(self.velocities, weight_grads):
                 v.assign(self.momentum * v + g)
@@ -235,14 +233,14 @@ class Metattack(BaseMeta):
                 modified_x = self.get_perturbed_x(self.tf_x, self.x_changes)
 
             adj_norm = normalize_adj_tensor(modified_adj)
-            output = self.do_forward(modified_x, adj_norm)
+            output = self.forward(modified_x, adj_norm)
             logit_labeled = tf.gather(output, self.idx_train)
             logit_unlabeled = tf.gather(output, self.idx_unlabeled)
             
             loss_labeled = self.loss_fn(self.labels_train, logit_labeled)
             loss_unlabeled = self.loss_fn(self.self_training_labels, logit_unlabeled)
 
-            attack_loss = self.lambda_ * tf.reduce_mean(loss_labeled) + (1 - self.lambda_) * tf.reduce_mean(loss_unlabeled)
+            attack_loss = self.lambda_ * loss_labeled + (1 - self.lambda_) * loss_unlabeled
         
         adj_grad, x_grad = None, None
 
@@ -327,8 +325,6 @@ class MetaApprox(BaseMeta):
                          use_real_label=use_real_label,
                          seed=seed, name=name, device=device, **kwargs)
 
-
-
     def build(self, hidden_layers):
 
         weights = []
@@ -383,14 +379,14 @@ class MetaApprox(BaseMeta):
                     modified_x = self.get_perturbed_x(self.tf_x, self.x_changes)
 
                 adj_norm = normalize_adj_tensor(modified_adj)
-                output = self.do_forward(modified_x, adj_norm)
+                output = self.forward(modified_x, adj_norm)
                 logit_labeled = tf.gather(output, self.idx_train)
                 logit_unlabeled = tf.gather(output, self.idx_unlabeled)
 
                 loss_labeled = self.loss_fn(self.labels_train, logit_labeled)
                 loss_unlabeled = self.loss_fn(self.self_training_labels, logit_unlabeled)
 
-                attack_loss = self.lambda_ * tf.reduce_mean(loss_labeled) + (1 - self.lambda_) * tf.reduce_mean(loss_unlabeled)
+                attack_loss = self.lambda_ * loss_labeled + (1 - self.lambda_) * loss_unlabeled
 
             adj_grad, x_grad = None, None
 
