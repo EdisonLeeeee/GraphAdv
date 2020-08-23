@@ -177,7 +177,7 @@ class SGA(TargetedAttacker):
         if weight>0:
             inv_index = index - self.n_non_edges - self.n_sub_edges * 2
         else:
-            if index>self.edge_lower_bound +  self.n_sub_edges:
+            if index>=self.edge_lower_bound +  self.n_sub_edges:
                 inv_index = index - self.n_sub_edges
             else:
                 inv_index = index + self.n_sub_edges

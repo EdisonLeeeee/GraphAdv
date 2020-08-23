@@ -3,9 +3,9 @@ import numpy as np
 
 
 def flip_adj(adj, flips):
-    if len(flips) == 0:
+    if flips is None or len(flips) == 0:
         warnings.warn(
-            "No flips.",
+            "There are NO structure flips, the adjacency matrix remain unchanged.",
             RuntimeWarning,
         )
         return adj.tocsr(copy=True)
@@ -24,9 +24,18 @@ def flip_adj(adj, flips):
 
 
 def flip_x(x, flips):
+    x = x.copy()
+    if flips is None or len(flips) == 0:
+        warnings.warn(
+            "There are NO feature flips, the feature matrix remain unchanged.",
+            RuntimeWarning,
+        )    
+        return x
+    
     for row, col in flips:
-        data = 1.0 if x[row, col] > 0. else 0.0
-        x[row, col] = 1. - data
+        data = 0.0 if x[row, col] > 0. else 1.0
+        x[row, col] = data
+    return x
 
     # TODO
     # Using numpy vectorized form to faster

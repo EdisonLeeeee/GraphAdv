@@ -5,7 +5,9 @@ from graphadv.attack.targeted.dice import DICE
 from graphadv.attack.targeted.nettack import Nettack
 from graphadv.attack.targeted.node_embedding_attack import NodeEmbeddingAttack
 from graphadv.attack.targeted.sga import SGA
-from graphadv.attack.targeted.iga import IGA
+from graphadv.attack.targeted.iterative_gradient_attack import IGA
 from graphadv.attack.targeted.gradargmax import GradArgmax
 from graphadv.attack.targeted.fgsm import FGSM
 from graphadv.attack.targeted.gf_attack import GFA
+from graphadv.attack.targeted.integrated_gradient_attack import IG
+

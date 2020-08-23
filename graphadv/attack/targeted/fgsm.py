@@ -21,7 +21,7 @@ class FGSM(TargetedAttacker):
         with tf.device(self.device):
             self.surrogate = surrogate
             self.loss_fn = sparse_categorical_crossentropy
-            self.tf_x = astensor(x)
+            self.tf_x = astensor(self.x)
 
     def reset(self):
         super().reset()
@@ -38,7 +38,7 @@ class FGSM(TargetedAttacker):
         super().attack(target, n_perturbations, direct_attack, structure_attack, feature_attack)
 
         if not direct_attack:
-            raise NotImplementedError(f'{self.name} does not support indirect attack now.')
+            raise NotImplementedError(f'{self.name} does NOT support indirect attack now.')
 
         target_index = astensor([target])
         target_label = astensor(self.target_label)

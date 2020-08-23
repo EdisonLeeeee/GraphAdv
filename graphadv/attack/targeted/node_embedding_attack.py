@@ -31,14 +31,14 @@ class NodeEmbeddingAttack(TargetedAttacker):
         adj = self.adj.astype('float64')
 
         if direct_attack:
-            influencer_nodes = [target]
+            influence_nodes = [target]
             candidates = np.column_stack(
                 (np.tile(target, n_nodes-1), list(self.nodes_set-set([target]))))
         else:
-            influencer_nodes = adj[target].nonzero()[1]
+            influence_nodes = adj[target].nonzero()[1]
             candidates = np.row_stack([np.column_stack((np.tile(infl, n_nodes - 2),
                                                         list(self.nodes_set - set([target, infl])))) for infl in
-                                       influencer_nodes])
+                                       influence_nodes])
         if not self.allow_singleton:
             candidates = filter_singletons(candidates, adj)
 
@@ -49,5 +49,3 @@ class NodeEmbeddingAttack(TargetedAttacker):
                                                                  dim, window_size)
         
         self.structure_flips = candidates[loss_for_candidates.argsort()[-n_perturbations:]]
-#         print(loss_for_candidates)
-#         plt.hist(loss_for_candidates)
