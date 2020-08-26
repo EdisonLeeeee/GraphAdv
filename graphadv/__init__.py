@@ -1,4 +1,5 @@
 from graphgallery import config
+
 set_epsilon = config.set_epsilon
 set_floatx = config.set_floatx
 set_intx = config.set_intx
@@ -16,6 +17,6 @@ from graphadv import utils
 
 
 
-__version__ = '0.1.1'
+__version__ = '0.1.0'
 
 __all__ = ['graphadv', 'attack', 'defense', 'utils', '__version__']
