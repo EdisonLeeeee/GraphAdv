@@ -13,8 +13,7 @@ class SVD(Defender):
 
         adj = self.adj.asfptype()
         U, S, V = sp.linalg.svds(adj, k=k)
-        diag_S = np.diag(S)
-        adj = U @ diag_S @ V
+        adj = (U*S) @ V
 
         if threshold is not None:
             adj[adj <= threshold] = 0.
