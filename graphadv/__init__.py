@@ -17,6 +17,6 @@ from graphadv import utils
 
 
 
-__version__ = '0.1.0'
+__version__ = '0.1.1'
 
 __all__ = ['graphadv', 'attack', 'defense', 'utils', '__version__']
