@@ -9,7 +9,10 @@ from graphadv.attack.targeted.fgsm import FGSM
 from graphadv.attack.targeted.gf_attack import GFA
 from graphadv.attack.targeted.integrated_gradient_attack import IG
 
+from graphadv.attack.targeted.experimental import *
 from graphadv.attack.targeted.experimental.gradargmax import GradArgmax
 from graphadv.attack.targeted.experimental.node_embedding_attack import NodeEmbeddingAttack
+
+
 
 
