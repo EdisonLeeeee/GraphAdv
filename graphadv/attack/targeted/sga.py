@@ -83,7 +83,8 @@ class SGA(TargetedAttacker):
     def subgraph_preprocessing(self, reduced_nodes=None):
         target = self.target
         wrong_label = self.wrong_label
-        neighbors = self.adj[target].nonzero()[1]
+#         neighbors = self.adj[target].nonzero()[1]
+        neighbors = self.adj[target].indices
         wrong_label_nodes = self.similar_nodes[wrong_label]
         sub_edges, sub_nodes = self.ego_subgraph()
         

@@ -78,7 +78,8 @@ class SGA(TargetedAttacker):
 
         target = self.target
         wrong_label = self.wrong_label
-        neighbors = self.adj[target].nonzero()[1]
+        # neighbors = self.adj[target].nonzero()[1]
+        neighbors = self.adj[target].indices        
         wrong_label_nodes = self.similar_nodes[wrong_label]
         sub_edges, sub_nodes = self.ego_subgraph()
         sub_edges  = np.vstack([sub_edges, sub_edges[:,[1,0]]])

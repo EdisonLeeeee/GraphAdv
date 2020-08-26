@@ -19,29 +19,23 @@ class BaseMeta(UntargetedAttacker):
     '''Base model for Mettack.'''
 
     def __init__(self, adj, x, labels,
-                 idx_train, idx_val, idx_test,
-                 hidden_layers, use_relu, use_real_label,
+                 idx_train, idx_unlabeled,
+                 hidden_layers, use_relu, self_training_labels=None,
                  seed=None, name=None, device='CPU:0', **kwargs):
 
         super().__init__(adj=adj, x=x, labels=labels, seed=seed, name=name, device=device, **kwargs)
         adj, x, labels = self.adj, self.x, self.labels
 
         idx_train = asintarr(idx_train)
-        idx_val = asintarr(idx_val)
-        idx_test = asintarr(idx_test)
-        idx_unlabeled = np.hstack([idx_val, idx_test])
+        idx_unlabeled = asintarr(idx_unlabeled)
 
-        # whether to use the ground-truth label as self-training labels
-        if use_real_label:
-            self_training_labels = labels[idx_unlabeled]
-        else:
+        if self_training_labels is None:
             surrogate = DenseGCN(adj, x, labels, device='GPU', norm_x=None, seed=None)
             surrogate.build(16, activations='relu' if use_relu else None)
-            his = surrogate.train(idx_train, verbose=0, epochs=100, save_best=False)
+            his = surrogate.train(idx_train, verbose=0, epochs=200, save_best=False)
             self_training_labels = surrogate.predict(idx_unlabeled).argmax(1)
 
         self.ll_ratio = None
-
         # mettack can also conduct feature attack
         self.allow_feature_attack = True
 
@@ -148,16 +142,16 @@ class BaseMeta(UntargetedAttacker):
 class Metattack(BaseMeta):
 
     def __init__(self,  adj, x, labels,
-                 idx_train, idx_val, idx_test,
+                 idx_train, idx_unlabeled,
                  learning_rate=0.01, train_epochs=100,
                  momentum=0.9, lambda_=0.,
-                 hidden_layers=[16], use_relu=True, use_real_label=False,
+                 hidden_layers=[16], use_relu=True, self_training_labels=None,
                  seed=None, name=None, device='CPU:0', **kwargs):
 
         super().__init__(adj, x, labels,
-                         idx_train, idx_val, idx_test,
+                         idx_train, idx_unlabeled,
                          hidden_layers=hidden_layers, use_relu=use_relu,
-                         use_real_label=use_real_label,
+                         self_training_labels=self_training_labels,
                          seed=seed, name=name, device=device, **kwargs)
 
         self.learning_rate = learning_rate
@@ -234,8 +228,8 @@ class Metattack(BaseMeta):
 
             adj_norm = normalize_adj_tensor(modified_adj)
             output = self.forward(modified_x, adj_norm)
-            logit_labeled = tf.gather(output, self.idx_train)
-            logit_unlabeled = tf.gather(output, self.idx_unlabeled)
+            logit_labeled = tf.gather(output, self.idx_train) / 5.0
+            logit_unlabeled = tf.gather(output, self.idx_unlabeled) / 5.0
             
             loss_labeled = self.loss_fn(self.labels_train, logit_labeled)
             loss_unlabeled = self.loss_fn(self.self_training_labels, logit_unlabeled)
@@ -307,9 +301,9 @@ class Metattack(BaseMeta):
 class MetaApprox(BaseMeta):
 
     def __init__(self,  adj, x, labels,
-                 idx_train, idx_val, idx_test,
+                 idx_train, idx_unlabeled,
                  learning_rate=0.01, train_epochs=100, lambda_=1.,
-                 hidden_layers=[16], use_relu=True, use_real_label=False,
+                 hidden_layers=[16], use_relu=True, self_training_labels=None,
                  seed=None, name=None, device='CPU:0', **kwargs):
 
         self.learning_rate = learning_rate
@@ -320,9 +314,9 @@ class MetaApprox(BaseMeta):
             raise ValueError('Invalid value of `lanbda_`, allowed values [0: (meta-self), 1: (meta-train), 0.5: (meta-both)].')
             
         super().__init__(adj, x, labels,
-                         idx_train, idx_val, idx_test,
+                         idx_train, idx_unlabeled,
                          hidden_layers=hidden_layers, use_relu=use_relu,
-                         use_real_label=use_real_label,
+                         self_training_labels=self_training_labels,
                          seed=seed, name=name, device=device, **kwargs)
 
     def build(self, hidden_layers):

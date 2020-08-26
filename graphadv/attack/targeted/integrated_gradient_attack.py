@@ -40,7 +40,7 @@ class IG(TargetedAttacker):
 
         
     def attack(self, target, n_perturbations=None, direct_attack=True,
-               structure_attack=True, feature_attack=False, steps=10):
+               structure_attack=True, feature_attack=False, steps=10, disable=False):
         
         super().attack(target, n_perturbations, direct_attack, structure_attack, feature_attack)
         
