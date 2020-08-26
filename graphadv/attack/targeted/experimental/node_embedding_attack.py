@@ -12,12 +12,13 @@ from graphadv.attack.targeted.targeted_attacker import TargetedAttacker
 
 class NodeEmbeddingAttack(TargetedAttacker):
     """ This implementation is not exactly right.
-    
+
     """
+
     def __init__(self, adj, k=50, name=None, seed=None, **kwargs):
         super().__init__(adj=adj, name=name, seed=seed, **kwargs)
         self.nodes_set = set(range(self.n_nodes))
-        
+
         deg_matrix = sp.diags(self.degree).astype('float64')
         self.vals_org, self.vecs_org = sp.linalg.eigsh(self.adj.astype('float64'), k=k, M=deg_matrix)
 
@@ -35,7 +36,8 @@ class NodeEmbeddingAttack(TargetedAttacker):
             candidates = np.column_stack(
                 (np.tile(target, n_nodes-1), list(self.nodes_set-set([target]))))
         else:
-            influence_nodes = adj[target].nonzero()[1]
+            influence_nodes = adj[target].indices
+            # influence_nodes = adj[target].nonzero()[1]
             candidates = np.row_stack([np.column_stack((np.tile(infl, n_nodes - 2),
                                                         list(self.nodes_set - set([target, infl])))) for infl in
                                        influence_nodes])
@@ -47,5 +49,5 @@ class NodeEmbeddingAttack(TargetedAttacker):
                                                                  self.vals_org, self.vecs_org,
                                                                  self.n_nodes,
                                                                  dim, window_size)
-        
+
         self.structure_flips = candidates[loss_for_candidates.argsort()[-n_perturbations:]]

@@ -2,7 +2,6 @@ import abc
 import random
 import warnings
 import numpy as np
-import networkx as nx
 import scipy.sparse as sp
 import tensorflow as tf
 
@@ -58,15 +57,14 @@ class BaseModel:
             self.n_classes = None
 
         if x is not None:
-            self.n_features = x.shape[1]
+            self.n_attrs = x.shape[1]
         else:
-            self.n_features = None
+            self.n_attrs = None
 
-        self.graph = None
         self.seed = seed
         self.name = name
         self.device = device
-        self.attribute_flips = None
+        self.feature_flips = None
         self.structure_flips = None
 
         self.__reseted = False
@@ -101,11 +99,11 @@ class BaseModel:
 
     @property
     def X(self):
-        feature_flips = self.feature_flips
-        if self.modified_x is None and feature_flips is not None:
-            self.modified_x = flip_x(self.x, feature_flips)
+        attr_flips = self.attr_flips
+        if self.modified_x is None and attr_flips is not None:
+            self.modified_x = flip_x(self.x, attr_flips)
 
-        if feature_flips is None:
+        if attr_flips is None:
             x = self.x
         else:
             x = self.modified_x
@@ -148,16 +146,16 @@ class BaseModel:
             raise TypeError(f'Invalid type of `structure_flips`, type `{self.structure_flips}`.')
 
     @property
-    def feature_flips(self):
+    def attr_flips(self):
 
-        if isinstance(self.attribute_flips, (list, np.ndarray)):
-            return np.asarray(self.attribute_flips)
-        elif isinstance(self.attribute_flips, dict):
-            return np.asarray(list(self.attribute_flips.keys()))
-        elif self.attribute_flips is None:
+        if isinstance(self.feature_flips, (list, np.ndarray)):
+            return np.asarray(self.feature_flips)
+        elif isinstance(self.feature_flips, dict):
+            return np.asarray(list(self.feature_flips.keys()))
+        elif self.feature_flips is None:
             return None
         else:
-            raise TypeError(f'Invalid type of `attribute_flips`, type `{self.attribute_flips}`.')
+            raise TypeError(f'Invalid type of `feature_flips`, type `{self.feature_flips}`.')
 
     @property
     def allow_singleton(self):
@@ -185,8 +183,6 @@ class BaseModel:
         self.degree = (adj.sum(1).A1 - adj.diagonal()).astype(self.intx)
         self.n_nodes = adj.shape[0]
         self.n_edges = adj.nnz//2
-        if self.graph is not None:
-            self.graph = nx.from_scipy_sparse_matrix(adj, create_using=nx.DiGraph)
 
     def set_x(self, x):
         '''Reset the feature matrix'''
@@ -194,7 +190,7 @@ class BaseModel:
         x_shape = x.shape
         assert x_shape[0] == self.n_nodes
         self.x = x
-        self.n_features = x_shape[1]
+        self.n_attrs = x_shape[1]
 
     def show_edge_flips(self, detail=False):
         assert self.labels is not None

@@ -1,6 +1,5 @@
 import numpy as np
 import tensorflow as tf
-import networkx as nx
 from numba import njit
 
 from tensorflow.keras.losses import sparse_categorical_crossentropy
@@ -15,14 +14,14 @@ from graphgallery import tqdm, astensor, ego_graph
 class SGA(TargetedAttacker):
     def __init__(self, adj, x, labels, idx_train=None, hops=2,
                  seed=None, name=None, device='CPU:0', surrogate=None, surrogate_args={}, **kwargs):
-        
+
         super().__init__(adj, x=x, labels=labels, seed=seed, name=name, device=device, **kwargs)
 
         if surrogate is None:
             surrogate = train_a_surrogate(self, 'SGC', idx_train, **surrogate_args)
         elif not isinstance(surrogate, SGC):
             raise RuntimeError("surrogate model should be the instance of `graphgallery.nn.SGC`.")
-            
+
         self.hops = hops
         self.similar_nodes = [np.where(labels == class_)[0] for class_ in range(self.n_classes)]
 
@@ -66,7 +65,7 @@ class SGA(TargetedAttacker):
                 for index in sorted_index:
                     index_with_offset = index + offset
                     u, v = self.indices[index_with_offset]
-                    if index_with_offset<self.non_edge_lower_bound and not self.allow_singleton and (self.selfloop_degree[u] <= 2 or self.selfloop_degree[v] <= 2):
+                    if index_with_offset < self.non_edge_lower_bound and not self.allow_singleton and (self.selfloop_degree[u] <= 2 or self.selfloop_degree[v] <= 2):
                         continue
 
                     if not self.is_modified_edge(u, v):
@@ -79,10 +78,10 @@ class SGA(TargetedAttacker):
         target = self.target
         wrong_label = self.wrong_label
         # neighbors = self.adj[target].nonzero()[1]
-        neighbors = self.adj[target].indices        
+        neighbors = self.adj[target].indices
         wrong_label_nodes = self.similar_nodes[wrong_label]
         sub_edges, sub_nodes = self.ego_subgraph()
-        sub_edges  = np.vstack([sub_edges, sub_edges[:,[1,0]]])
+        sub_edges = np.vstack([sub_edges, sub_edges[:, [1, 0]]])
 
         if self.direct_attack or reduce_nodes is not None:
             influencer_nodes = [target]
@@ -115,7 +114,7 @@ class SGA(TargetedAttacker):
 
         with tf.GradientTape() as tape:
             tape.watch(weights)
-            
+
             if not compute_A_grad:
                 adj = tf.sparse.SparseTensor(self.indices, weights, self.adj.shape)
             else:
@@ -126,7 +125,6 @@ class SGA(TargetedAttacker):
             logit = tf.nn.softmax(((output[self.target] + self.b)/eps))
 #             loss = self.loss_fn(self.target_label, logit) - self.loss_fn(self.wrong_label, logit)
             loss = self.loss_fn(self.target_label, logit) - self.loss_fn(self.wrong_label, logit)
-
 
         gradients = tape.gradient(loss, weights)
 
@@ -154,31 +152,30 @@ class SGA(TargetedAttacker):
         self.indices = np.vstack([self_loop, potential_edges[:, [1, 0]], sub_edges, potential_edges])
         weights = np.hstack([self_loop_weights, non_edge_weights, edge_weights, non_edge_weights])
         self.weights = tf.Variable(weights, dtype=self.floatx)
-        self.edge_lower_bound = self_loop_weights.size + non_edge_weights.size 
+        self.edge_lower_bound = self_loop_weights.size + non_edge_weights.size
         self.non_edge_lower_bound = self.edge_lower_bound + edge_weights.size
-        
+
         self.n_sub_edges = edge_weights.size // 2
         self.n_non_edges = non_edge_weights.size
-        
+
     def top_k_wrong_labels_nodes(self, k):
         offset = self.non_edge_lower_bound
         weights = self.weights
         with tf.device(self.device):
             gradients = self.compute_gradient()[offset:]
             _, index = tf.math.top_k(gradients, k=k)
-            
+
         wrong_label_nodes = self.indices[:, 1][index.numpy() + offset]
 
         return wrong_label_nodes
 
-
     def update_subgraph(self, u, v, index):
         weight = 1.0 - self.weights[index]
         degree_delta = 2. * weight - 1.
-        if weight>0:
+        if weight > 0:
             inv_index = index - self.n_non_edges - self.n_sub_edges * 2
         else:
-            if index>=self.edge_lower_bound +  self.n_sub_edges:
+            if index >= self.edge_lower_bound + self.n_sub_edges:
                 inv_index = index - self.n_sub_edges
             else:
                 inv_index = index + self.n_sub_edges
@@ -194,4 +191,3 @@ def normalize_GCN(indices, weights, degree):
     inv_degree = tf.pow(degree, -0.5)
     normed_weights = weights * tf.gather(inv_degree, row) * tf.gather(inv_degree, col)
     return normed_weights
-

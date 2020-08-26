@@ -30,11 +30,11 @@ class FGSM(UntargetedAttacker):
     def reset(self):
         super().reset()
         self.structure_flips = []
-        self.attribute_flips = []
+        self.feature_flips = []
 
         with tf.device(self.device):
             self.modified_adj = tf.Variable(self.adj.A, dtype=self.floatx)
-            self.modified_x = tf.Variable(x, dtype=self.floatx)
+            self.modified_x = tf.Variable(self.x, dtype=self.floatx)
 
     def attack(self, n_perturbations=0.05, symmetric=True,
                structure_attack=True, feature_attack=False, disable=False):
@@ -72,9 +72,9 @@ class FGSM(UntargetedAttacker):
                     self.structure_flips.append((row, col))
                 else:
                     x_grad_argmax = tf.argmax(x_grad_score)
-                    row, col = divmod(x_grad_argmax.numpy(), self.n_features)
+                    row, col = divmod(x_grad_argmax.numpy(), self.n_attrs)
                     modified_x[row, col].assign(1. - modified_x[row, col])
-                    self.attribute_flips.append((row, col))
+                    self.feature_flips.append((row, col))
 
     @tf.function
     def structure_score(self, modified_adj, adj_grad):

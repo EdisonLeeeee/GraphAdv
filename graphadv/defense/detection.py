@@ -23,8 +23,8 @@ class JaccardDetection(Defender):
         x = self.x
         if not is_binary(x):
                 warnings.warn(
-                    "The input feature matrix is NOT binary! "
-                    "For continuous features, you should use `graphadv.defense.CosinDetection` instead.",
+                    "The input attribute matrix is NOT binary! "
+                    "For continuous attributes, you should use `graphadv.defense.CosinDetection` instead.",
                     RuntimeWarning,
                 )             
             
@@ -61,8 +61,8 @@ class CosinDetection(Defender):
         x = self.x
         if is_binary(x):
                 warnings.warn(
-                    "The input feature matrix is binary! "
-                    "For binary features, you should use `graphadv.defense.JaccardDetection` instead.",
+                    "The input attribute matrix is binary! "
+                    "For binary attributes, you should use `graphadv.defense.JaccardDetection` instead.",
                     RuntimeWarning,
                 )   
             

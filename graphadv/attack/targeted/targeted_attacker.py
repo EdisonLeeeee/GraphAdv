@@ -13,7 +13,7 @@ class TargetedAttacker(BaseAttacker):
         self.modified_degree = None
         self.target = None
         self.target_label = None
-        self.attribute_flips = None
+        self.feature_flips = None
         self.structure_flips = None
         self.n_perturbations = None
         self.structure_attack = None

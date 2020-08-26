@@ -17,8 +17,8 @@ class GradArgmax(TargetedAttacker):
         if surrogate is None:
             surrogate = train_a_surrogate(self, 'GCN', idx_train, idx_val, **kwargs)
 
-        elif not isinstance(surrogate, SemiSupervisedModel) and surrogate.sparse == True:
-            raise RuntimeError("surrogate model should be instance of `graphgallery.nn.SemiSupervisedModel` and accept a sparse form of adjacency matrix `adj`.")
+        elif not isinstance(surrogate, SemiSupervisedModel):
+            raise RuntimeError("surrogate model should be instance of `graphgallery.nn.SemiSupervisedModel`.")
 
         with tf.device(self.device):
             self.surrogate = surrogate

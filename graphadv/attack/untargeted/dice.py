@@ -1,18 +1,12 @@
 import random
 import numpy as np
-import networkx as nx
 from graphadv.attack.untargeted.untargeted_attacker import UntargetedAttacker
 from graphgallery import tqdm
 
 
 class DICE(UntargetedAttacker):
-    def __init__(self, adj, labels, graph=None, seed=None, name=None, **kwargs):
+    def __init__(self, adj, labels, seed=None, name=None, **kwargs):
         super().__init__(adj, labels=labels, seed=seed, name=name, **kwargs)
-
-        if graph is None:
-            graph = nx.from_scipy_sparse_matrix(self.adj, create_using=nx.DiGraph)
-
-        self.graph = graph
         self.nodes_set = set(range(self.n_nodes))
 
     def reset(self):
@@ -48,7 +42,8 @@ class DICE(UntargetedAttacker):
     def add_an_edge(self, influencer_nodes):
         u = random.choice(influencer_nodes)
         # assume that the graph has not self-loops
-        potential_nodes = list(self.nodes_set - set(self.graph.neighbors(u)))
+        neighbors = self.adj[u].indices.tolist()
+        potential_nodes = list(self.nodes_set - set(neighbors))
 
         if len(potential_nodes) == 0:
             return None
@@ -63,7 +58,8 @@ class DICE(UntargetedAttacker):
     def del_an_edge(self, influencer_nodes):
         u = random.choice(influencer_nodes)
         # assume that the graph has not self-loops
-        potential_nodes = list(set(self.graph.neighbors(u)))
+        neighbors = self.adj[u].indices.tolist()
+        potential_nodes = list(set(neighbors))
 
         if len(potential_nodes) == 0:
             return None

@@ -4,7 +4,7 @@ from graphadv.attack.untargeted.untargeted_attacker import UntargetedAttacker
 from graphgallery import tqdm
 
 
-class Target2General(UntargetedAttacker):
+class Target2Global(UntargetedAttacker):
     def __init__(self, adj, x, labels, attacker, seed=None, name=None, device='CPU:0', **kwargs):
         super().__init__(adj=adj, x=x, labels=labels, seed=seed, name=name, device=device, **kwargs)
 

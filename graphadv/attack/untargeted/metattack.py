@@ -56,7 +56,7 @@ class BaseMeta(UntargetedAttacker):
     def reset(self):
         super().reset()
         self.structure_flips = []
-        self.attribute_flips = []
+        self.feature_flips = []
 
         with tf.device(self.device):
             self.adj_changes.assign(tf.zeros_like(self.tf_adj))
@@ -143,7 +143,7 @@ class Metattack(BaseMeta):
 
     def __init__(self,  adj, x, labels,
                  idx_train, idx_unlabeled,
-                 learning_rate=0.01, train_epochs=100,
+                 lr=0.1, epochs=100,
                  momentum=0.9, lambda_=0.,
                  hidden_layers=[16], use_relu=True, self_training_labels=None,
                  seed=None, name=None, device='CPU:0', **kwargs):
@@ -154,8 +154,8 @@ class Metattack(BaseMeta):
                          self_training_labels=self_training_labels,
                          seed=seed, name=name, device=device, **kwargs)
 
-        self.learning_rate = learning_rate
-        self.train_epochs = train_epochs
+        self.lr = lr
+        self.epochs = epochs
         self.momentum = momentum
         self.lambda_ = lambda_
 
@@ -167,7 +167,7 @@ class Metattack(BaseMeta):
         weights, velocities = [], []
         zeros_initializer = zeros()
 
-        pre_hid = self.n_features
+        pre_hid = self.n_attrs
         for hid in hidden_layers + [self.n_classes]:
             shape = (pre_hid, hid)
             # use zeros_initializer temporary to save time
@@ -186,8 +186,8 @@ class Metattack(BaseMeta):
         zeros_initializer = zeros()
 
         for w, wv in zip(self.weights, self.velocities):
-            w.assign(w_initializer(w.shape))
-            wv.assign(zeros_initializer(wv.shape))
+            w.assign(w_initializer(w.shape, dtype=self.floatx))
+            wv.assign(zeros_initializer(wv.shape, dtype=self.floatx))
 
     @tf.function
     def train_step(self, x, adj, index, labels):
@@ -204,14 +204,14 @@ class Metattack(BaseMeta):
         self.initialize()
         adj_norm = normalize_adj_tensor(adj)
 
-        for _ in range(self.train_epochs):
+        for _ in range(self.epochs):
             weight_grads = self.train_step(x, adj_norm, self.idx_train, self.labels_train)
 
             for v, g in zip(self.velocities, weight_grads):
                 v.assign(self.momentum * v + g)
 
             for w, v in zip(self.weights, self.velocities):
-                w.assign_sub(self.learning_rate * v)
+                w.assign_sub(self.lr * v)
 
     @tf.function
     def meta_grad(self):
@@ -227,21 +227,20 @@ class Metattack(BaseMeta):
                 modified_x = self.get_perturbed_x(self.tf_x, self.x_changes)
 
             adj_norm = normalize_adj_tensor(modified_adj)
-            output = self.forward(modified_x, adj_norm)
-            logit_labeled = tf.gather(output, self.idx_train) / 5.0
-            logit_unlabeled = tf.gather(output, self.idx_unlabeled) / 5.0
-            
+            output = self.forward(modified_x, adj_norm) / 5.0
+            logit_labeled = tf.gather(output, self.idx_train)
+            logit_unlabeled = tf.gather(output, self.idx_unlabeled)
+
             loss_labeled = self.loss_fn(self.labels_train, logit_labeled)
             loss_unlabeled = self.loss_fn(self.self_training_labels, logit_unlabeled)
 
             attack_loss = self.lambda_ * loss_labeled + (1 - self.lambda_) * loss_unlabeled
-        
+
         adj_grad, x_grad = None, None
 
         if self.structure_attack:
             adj_grad = tape.gradient(attack_loss, self.adj_changes)
 
-        
         if self.feature_attack:
             x_grad = tape.gradient(attack_loss, self.x_changes)
 
@@ -262,8 +261,8 @@ class Metattack(BaseMeta):
         with tf.device(self.device):
             modified_adj, modified_x = self.tf_adj, self.tf_x
             adj_changes, x_changes = self.adj_changes, self.x_changes
-            structure_flips, attribute_flips = self.structure_flips, self.attribute_flips
-            
+            structure_flips, feature_flips = self.structure_flips, self.feature_flips
+
             for _ in tqdm(range(self.n_perturbations), desc='Peturbing Graph', disable=disable):
 
                 if structure_attack:
@@ -293,26 +292,26 @@ class Metattack(BaseMeta):
                     structure_flips.append((row, col))
                 else:
                     x_meta_argmax = tf.argmax(x_meta_score)
-                    row, col = divmod(x_meta_argmax.numpy(), self.n_features)
+                    row, col = divmod(x_meta_argmax.numpy(), self.n_attrs)
                     x_changes[row, col].assign(-2 * modified_x[row, col] + 1)
-                    attribute_flips.append((row, col))
-                    
-                    
+                    feature_flips.append((row, col))
+
+
 class MetaApprox(BaseMeta):
 
     def __init__(self,  adj, x, labels,
                  idx_train, idx_unlabeled,
-                 learning_rate=0.01, train_epochs=100, lambda_=1.,
+                 lr=0.1, epochs=100, lambda_=0.,
                  hidden_layers=[16], use_relu=True, self_training_labels=None,
                  seed=None, name=None, device='CPU:0', **kwargs):
 
-        self.learning_rate = learning_rate
-        self.train_epochs = train_epochs
+        self.lr = lr
+        self.epochs = epochs
         self.lambda_ = lambda_
 
         if lambda_ not in (0., 0.5, 1.):
             raise ValueError('Invalid value of `lanbda_`, allowed values [0: (meta-self), 1: (meta-train), 0.5: (meta-both)].')
-            
+
         super().__init__(adj, x, labels,
                          idx_train, idx_unlabeled,
                          hidden_layers=hidden_layers, use_relu=use_relu,
@@ -324,7 +323,7 @@ class MetaApprox(BaseMeta):
         weights = []
         zeros_initializer = zeros()
 
-        pre_hid = self.n_features
+        pre_hid = self.n_attrs
         for hid in hidden_layers + [self.n_classes]:
             shape = (pre_hid, hid)
             # use zeros_initializer temporary to save time
@@ -335,7 +334,7 @@ class MetaApprox(BaseMeta):
         self.weights = weights
         self.adj_grad_sum = tf.Variable(tf.zeros_like(self.tf_adj))
         self.x_grad_sum = tf.Variable(tf.zeros_like(self.tf_x))
-        self.optimizer = Adam(self.learning_rate, epsilon=1e-8)
+        self.optimizer = Adam(self.lr, epsilon=1e-8)
 
     def initialize(self):
 
@@ -343,13 +342,13 @@ class MetaApprox(BaseMeta):
         zeros_initializer = zeros()
 
         for w in self.weights:
-            w.assign(w_initializer(w.shape))
+            w.assign(w_initializer(w.shape, dtype=self.floatx))
 
         if self.structure_attack:
-            self.adj_grad_sum.assign(zeros_initializer(self.adj_grad_sum.shape))
+            self.adj_grad_sum.assign(zeros_initializer(self.adj_grad_sum.shape, dtype=self.floatx))
 
         if self.feature_attack:
-            self.x_grad_sum.assign(zeros_initializer(self.x_grad_sum.shape))
+            self.x_grad_sum.assign(zeros_initializer(self.x_grad_sum.shape, dtype=self.floatx))
 
         # reset optimizer
         for var in self.optimizer.variables():
@@ -363,7 +362,7 @@ class MetaApprox(BaseMeta):
         adj_grad_sum, x_grad_sum = self.adj_grad_sum, self.x_grad_sum
         optimizer = self.optimizer
 
-        for _ in tf.range(self.train_epochs):
+        for _ in tf.range(self.epochs):
 
             with tf.GradientTape(persistent=True) as tape:
                 if self.structure_attack:
@@ -373,7 +372,7 @@ class MetaApprox(BaseMeta):
                     modified_x = self.get_perturbed_x(self.tf_x, self.x_changes)
 
                 adj_norm = normalize_adj_tensor(modified_adj)
-                output = self.forward(modified_x, adj_norm)
+                output = self.forward(modified_x, adj_norm) / 5.0
                 logit_labeled = tf.gather(output, self.idx_train)
                 logit_unlabeled = tf.gather(output, self.idx_unlabeled)
 
@@ -414,7 +413,7 @@ class MetaApprox(BaseMeta):
         with tf.device(self.device):
             modified_adj, modified_x = self.tf_adj, self.tf_x
             adj_changes, x_changes = self.adj_changes, self.x_changes
-            structure_flips, attribute_flips = self.structure_flips, self.attribute_flips
+            structure_flips, feature_flips = self.structure_flips, self.feature_flips
 
             for _ in tqdm(range(self.n_perturbations), desc='Peturbing Graph', disable=disable):
 
@@ -439,7 +438,6 @@ class MetaApprox(BaseMeta):
                     structure_flips.append((row, col))
                 else:
                     x_meta_argmax = tf.argmax(x_meta_score)
-                    row, col = divmod(x_meta_argmax.numpy(), self.n_features)
+                    row, col = divmod(x_meta_argmax.numpy(), self.n_attrs)
                     x_changes[row, col].assign(-2 * modified_x[row, col] + 1)
-                    attribute_flips.append((row, col))
-                    
+                    feature_flips.append((row, col))

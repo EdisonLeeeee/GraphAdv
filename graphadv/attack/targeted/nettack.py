@@ -30,20 +30,20 @@ class Nettack(TargetedAttacker):
     Technical University of Munich
     """
 
-    def __init__(self, adj, x, labels, idx_train=None, surrogate=None, surrogate_args={}, 
+    def __init__(self, adj, x, labels, idx_train=None, surrogate=None, surrogate_args={},
                  seed=None, name=None, device='CPU:0', **kwargs):
         super().__init__(adj=adj, x=x, labels=labels, seed=seed, name=name, device=device, **kwargs)
 
         adj, x = self.adj, self.x
-        
+
         # nettack can conduct feature attack
         self.allow_feature_attack = True
-        
+
         if surrogate is None:
             surrogate = train_a_surrogate(self, 'GCN', idx_train, **surrogate_args)
         elif not isinstance(surrogate, GCN):
             raise RuntimeError('surrogate model should be the instance of `graphgallery.nn.models.GCN`.')
-            
+
         self.sparse_x = sp.csr_matrix(x)
 
         surrogate_weights = surrogate.get_weights()
@@ -61,7 +61,7 @@ class Nettack(TargetedAttacker):
         self.adj_norm = normalize_adj(self.modified_adj).tolil()
 
         self.structure_flips = []
-        self.attribute_flips = []
+        self.feature_flips = []
         self.influencer_nodes = []
         self.potential_edges = []
         self.cooc_constraint = None
@@ -77,13 +77,13 @@ class Nettack(TargetedAttacker):
 
         Returns
         -------
-        np.array [len(nodes), n_features], dtype bool
-            Binary matrix of dimension len(nodes) x n_features. A 1 in entry n,d indicates that
+        np.array [len(nodes), n_attrs], dtype bool
+            Binary matrix of dimension len(nodes) x n_attrs. A 1 in entry n,d indicates that
             we are allowed to add feature d to the features of node n.
 
         """
 
-        n_nodes, n_features = self.modified_x.shape
+        n_nodes, n_attrs = self.modified_x.shape
         words_graph = self.cooc_matrix.copy()
         words_graph.setdiag(0)
         words_graph = (words_graph > 0)
@@ -96,13 +96,13 @@ class Nettack(TargetedAttacker):
             n_idx = self.modified_x[n, :].nonzero()[1]
             sd[n] = np.sum(inv_word_degrees[n_idx.tolist()])
 
-        scores_matrix = sp.lil_matrix((n_nodes, n_features))
+        scores_matrix = sp.lil_matrix((n_nodes, n_attrs))
 
         for n in nodes:
             common_words = words_graph.multiply(self.modified_x[n])
             idegs = inv_word_degrees[common_words.nonzero()[1]]
             nnz = common_words.nonzero()[0]
-            scores = np.array([idegs[nnz == ix].sum() for ix in range(n_features)])
+            scores = np.array([idegs[nnz == ix].sum() for ix in range(n_attrs)])
             scores_matrix[n] = scores
         self.cooc_constraint = sp.csr_matrix(scores_matrix - 0.5 * sd[:, None] > 0)
 
@@ -117,7 +117,7 @@ class Nettack(TargetedAttacker):
 
         Returns
         -------
-        np.array [n_nodes, n_features] matrix containing the gradients.
+        np.array [n_nodes, n_attrs] matrix containing the gradients.
 
         """
 
@@ -243,6 +243,7 @@ class Nettack(TargetedAttacker):
         assert n < self.n_nodes-1, "number of influencers cannot be >= number of nodes in the graph!"
 
         neighbors = self.modified_adj[self.target].nonzero()[1]
+        # neighbors = self.modified_adj[self.target].indices
 #         assert self.target not in neighbors
 
         potential_edges = np.column_stack((np.tile(self.target, len(neighbors)), neighbors)).astype("int32")
@@ -304,10 +305,10 @@ class Nettack(TargetedAttacker):
         degrees = self.modified_adj.sum(0).A1 + 1
 
         # Ignore warnings:
-        #     NumbaPendingDeprecationWarning: 
+        #     NumbaPendingDeprecationWarning:
         # Encountered the use of a type that is scheduled for deprecation: type 'reflected set' found for argument 'edges_set' of function 'compute_new_a_hat_uv'.
 
-        # For more information visit http://numba.pydata.org/numba-doc/latest/reference/deprecation.html#deprecation-of-reflection-for-list-and-set-types        
+        # For more information visit http://numba.pydata.org/numba-doc/latest/reference/deprecation.html#deprecation-of-reflection-for-list-and-set-types
         with warnings.catch_warnings(record=True):
             warnings.filterwarnings(
                 'ignore', '.*Encountered the use of a type that is scheduled for deprecation*')
@@ -429,7 +430,7 @@ class Nettack(TargetedAttacker):
                     current_degree_sequence[best_edge] += deltas[powerlaw_filter][best_edge_ix]
             else:
                 self.modified_x[tuple(best_feature_ix)] = 1 - self.modified_x[tuple(best_feature_ix)]
-                self.attribute_flips.append(tuple(best_feature_ix))
+                self.feature_flips.append(tuple(best_feature_ix))
 
 
 @njit

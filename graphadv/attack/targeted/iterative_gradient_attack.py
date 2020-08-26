@@ -22,7 +22,7 @@ class IGA(TargetedAttacker):
             raise RuntimeError("surrogate model should be the instance of `graphgallery.nn.DenseGCN`.")
 
         self.allow_feature_attack = True
-            
+
         with tf.device(self.device):
             self.surrogate = surrogate
             self.loss_fn = sparse_categorical_crossentropy
@@ -31,11 +31,11 @@ class IGA(TargetedAttacker):
         super().reset()
         self.target_index = None
         self.structure_flips = []
-        self.attribute_flips = []
-        
+        self.feature_flips = []
+
         with tf.device(self.device):
             self.modified_adj = tf.Variable(self.adj.A, dtype=self.floatx)
-            self.modified_x = tf.Variable(x, dtype=self.floatx)
+            self.modified_x = tf.Variable(self.x, dtype=self.floatx)
 
     def attack(self, target, n_perturbations=None, symmetric=True, direct_attack=True,
                structure_attack=True, feature_attack=False, disable=False):
@@ -82,9 +82,9 @@ class IGA(TargetedAttacker):
                     self.structure_flips.append((row, col))
                 else:
                     x_grad_argmax = tf.argmax(x_grad_score)
-                    row, col = divmod(x_grad_argmax.numpy(), self.n_features)
+                    row, col = divmod(x_grad_argmax.numpy(), self.n_attrs)
                     modified_x[row, col].assign(1. - modified_x[row, col])
-                    self.attribute_flips.append((row, col))
+                    self.feature_flips.append((row, col))
 
     def construct_mask(self):
         adj_mask = np.ones(self.adj.shape, dtype=self.floatx)

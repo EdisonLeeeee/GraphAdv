@@ -17,7 +17,7 @@ class GFA(TargetedAttacker):
     def __init__(self, adj, x, K=2, T=128, seed=None, name=None, device='CPU:0', **kwargs):
         super().__init__(adj, x=x, seed=seed, name=name, device=device, **kwargs)
         adj, x = self.adj, self.x
-        
+
         adj_with_I = adj + sp.eye(adj.shape[0])
         rowsum = adj_with_I.sum(1).A1
         degree_mat = np.diag(rowsum)
@@ -58,7 +58,8 @@ class GFA(TargetedAttacker):
         N = self.n_nodes
         if not direct_attack:
             # Choose influencer nodes
-            influencer_nodes = self.adj[target].nonzero()[1]
+            # influencer_nodes = self.adj[target].nonzero()[1]
+            influencer_nodes = self.adj[target].indices
             # Potential edges are all edges from any attacker to any other node, except the respective
             # attacker itself or the node being attacked.
             potential_edges = np.row_stack([np.column_stack((np.tile(infl, N - 2), np.setdiff1d(np.arange(N),
@@ -163,8 +164,5 @@ class GFA(TargetedAttacker):
             u_k = eig_vec[:, eig_vals_idx[:T]]
             u_x_mean = u_k.T.dot(X_mean)
             return_values.append(eig_vals_k_sum * np.square(np.linalg.norm(u_x_mean)))
-
-#             print("The one_edge_version progress:%f%%" % (((j + 1) / (len(filtered_edges))) * 100), end='\r', flush=True)
-#         print("\n")
 
         return np.asarray(return_values)
