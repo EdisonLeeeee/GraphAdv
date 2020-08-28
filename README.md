@@ -127,9 +127,9 @@ In detail, the following methods are currently implemented:
 ## Defense
 + **JaccardDetection**, **CosinDetection**, from *Huijun Wu et al.*, [📝Adversarial Examples on Graph Data: Deep Insights into Attack and Defense](https://arxiv.org/abs/1903.01610), *IJCAI'19*.
  [[🌈 GraphAdv Example]](https://github.com/EdisonLeeeee/GraphAdv/blob/master/examples/Defense/test_detection.ipynb)
-+ Adversarial Tranining, from *Kaidi Xu et al.*, [📝Topology Attack and Defense for Graph Neural Networks: An Optimization Perspective](https://arxiv.org/abs/1906.04214), *IJCAI'19*.
- [[🌈 GraphAdv Example]](https://github.com/EdisonLeeeee/GraphAdv/blob/master/examples/Defense/test_svd.ipynb)
++ **Adversarial Tranining**, from *Kaidi Xu et al.*, [📝Topology Attack and Defense for Graph Neural Networks: An Optimization Perspective](https://arxiv.org/abs/1906.04214), *IJCAI'19*.
 + **SVD**, from *Negin Entezari et al.*, [📝All You Need Is Low (Rank): Defending Against Adversarial Attacks on Graphs](https://dl.acm.org/doi/abs/10.1145/3336191.3371789), *WSDM'20*.
+ [[🌈 GraphAdv Example]](https://github.com/EdisonLeeeee/GraphAdv/blob/master/examples/Defense/test_svd.ipynb)
 + **RGCN**, from *Dingyuan Zhu et al.*, [Robust Graph Convolutional Networks Against Adversarial Attacks](http://pengcui.thumedialab.com/papers/RGCN.pdf), *KDD'19*.
  [[🌈 GraphAdv Example]](https://github.com/EdisonLeeeee/GraphAdv/blob/master/examples/Defense/test_RGCN.ipynb)
 
