@@ -105,9 +105,9 @@ In detail, the following methods are currently implemented:
 [[🌈 GraphAdv Example]](https://github.com/EdisonLeeeee/GraphAdv/tree/master/examples/Targeted%20Attack/test_IG.ipynb)
 + **GF-Attack**, from *Heng Chang et al*, [📝A Restricted Black-box Adversarial Framework Towards Attacking Graph Embedding Models](https://arxiv.org/abs/1908.01297), *AAAI'20*.
 [[🌈 GraphAdv Example]](https://github.com/EdisonLeeeee/GraphAdv/tree/master/examples/Targeted%20Attack/test_GFA.ipynb)
-+ **IGA**, from **, [📝Link Prediction Adversarial Attack Via Iterative Gradient Attack](https://ieeexplore.ieee.org/abstract/document/9141291), *IEEE Trans 20*.
++ **IGA**, from *Jinyin Chen et al.*, [📝Link Prediction Adversarial Attack Via Iterative Gradient Attack](https://ieeexplore.ieee.org/abstract/document/9141291), *IEEE Trans 20*.
 [[🌈 GraphAdv Example]](https://github.com/EdisonLeeeee/GraphAdv/tree/master/examples/Targeted%20Attack/test_IGA.ipynb)
-+ **SGA**
++ **SGA**, from.
 [[🌈 GraphAdv Example]](https://github.com/EdisonLeeeee/GraphAdv/tree/master/examples/Targeted%20Attack/test_SGA.ipynb)
 
 ### Untargeted Attack
