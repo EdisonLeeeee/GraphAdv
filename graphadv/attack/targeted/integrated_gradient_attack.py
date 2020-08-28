@@ -38,7 +38,7 @@ class IG(TargetedAttacker):
         super().reset()
 
     def attack(self, target, n_perturbations=None, direct_attack=True,
-               structure_attack=True, feature_attack=False, steps=10, disable=False):
+               structure_attack=True, feature_attack=False, steps=20, disable=False):
 
         super().attack(target, n_perturbations, direct_attack, structure_attack, feature_attack)
 
@@ -47,11 +47,11 @@ class IG(TargetedAttacker):
 
         if structure_attack:
             candidate_edges = self.get_candidate_edges()
-            link_importance = self.get_link_importance(candidate_edges, steps)
+            link_importance = self.get_link_importance(candidate_edges, steps, disable=disable)
 
         if feature_attack:
             candidate_features = self.get_candidate_features()
-            feature_importance = self.get_feature_importance(candidate_features, steps)
+            feature_importance = self.get_feature_importance(candidate_features, steps, disable=disable)
 
         if structure_attack and not feature_attack:
             self.structure_flips = candidate_edges[largest_indices(link_importance, self.n_perturbations)[0]]
@@ -110,7 +110,7 @@ class IG(TargetedAttacker):
 
         return candidate_features
 
-    def get_link_importance(self, candidates, steps=10):
+    def get_link_importance(self, candidates, steps, disable=False):
 
         adj = self.tf_adj
         x = self.tf_x
@@ -130,7 +130,7 @@ class IG(TargetedAttacker):
         edge_gradients = tf.zeros(edges.shape[0])
         non_edge_gradients = tf.zeros(non_edges.shape[0])
 
-        for alpha in tf.linspace(0., 1.0, steps+1):
+        for alpha in tqdm(tf.linspace(0., 1.0, steps+1), desc='Computing link importance', disable=disable):
             ###### Compute integrated gradients for removing edges ######
             adj_diff = adj - baseline_remove
             adj_step = baseline_remove + alpha * adj_diff
@@ -151,7 +151,7 @@ class IG(TargetedAttacker):
 
         return integrated_grads
 
-    def get_feature_importance(self, candidates, steps=10):
+    def get_feature_importance(self, candidates, steps, disable=False):
         adj = self.adj_norm
         x = self.tf_x
         target_index = astensor([self.target])
@@ -170,7 +170,7 @@ class IG(TargetedAttacker):
         feature_gradients = tf.zeros(features.shape[0])
         non_feature_gradients = tf.zeros(non_attrs.shape[0])
 
-        for alpha in tf.linspace(0., 1.0, steps+1):
+        for alpha in tqdm(tf.linspace(0., 1.0, steps+1), desc='Computing feature importance', disable=disable):
             ###### Compute integrated gradients for removing features ######
             x_diff = x - baseline_remove
             x_step = baseline_remove + alpha * x_diff
