@@ -5,7 +5,7 @@
 <!-- [![PyPI Version][pypi-image]][pypi-url] -->
 
 <p align="center">
-  <img width = "500" height = "400" src="https://github.com/EdisonLeeeee/GraphAdv/blob/master/imgs/graphadv.svg" alt="logo"/>
+  <img width = "500" height = "250" src="https://github.com/EdisonLeeeee/GraphAdv/blob/master/imgs/graphadv.svg" alt="logo"/>
 </p>
 
 ---
@@ -90,9 +90,10 @@ More examples please refer to the [examples](https://github.com/EdisonLeeeee/Gra
 
 # Implementations
 In detail, the following methods are currently implemented:
+
 ## Attack
 ### Targeted Attack
-+ **RAND**: The simplest attack.
++ **RAND**: The the simplest attack method.
 [[🌈 GraphAdv Example]](https://github.com/EdisonLeeeee/GraphAdv/tree/master/examples/Targeted%20Attack/test_RAND.ipynb)
 + **FGSM**, from *Ian J. Goodfellow et al.*, [📝Explaining and Harnessing Adversarial Examples](https://arxiv.org/abs/1412.6572), *ICLR'15*.
 [[🌈 GraphAdv Example]](https://github.com/EdisonLeeeee/GraphAdv/tree/master/examples/Targeted%20Attack/test_FGSM.ipynb)
@@ -110,26 +111,26 @@ In detail, the following methods are currently implemented:
 [[🌈 GraphAdv Example]](https://github.com/EdisonLeeeee/GraphAdv/tree/master/examples/Targeted%20Attack/test_SGA.ipynb)
 
 ### Untargeted Attack
-+ **RAND**: The simplest attack.
++ **RAND**: The the simplest attack method.
 [[🌈 GraphAdv Example]](https://github.com/EdisonLeeeee/GraphAdv/tree/master/examples/Untargeted%20Attack/test_RAND.ipynb)
 + **FGSM**, from *Ian J. Goodfellow et al.*, [📝Explaining and Harnessing Adversarial Examples](https://arxiv.org/abs/1412.6572), *ICLR'15*.
 [[🌈 GraphAdv Example]](https://github.com/EdisonLeeeee/GraphAdv/tree/master/examples/Untargeted%20Attack/test_FGSM.ipynb)
 + **DICE**, from *Marcin Waniek et al*, [📝Hiding Individuals and Communities in a Social Network](https://arxiv.org/abs/1608.00375), *Nature Human Behavior 16*.
 [[🌈 GraphAdv Example]](https://github.com/EdisonLeeeee/GraphAdv/tree/master/examples/Untargeted%20Attack/test_DICE.ipynb)
-+ Metattack, MetaApprox, from *Daniel Zügner et al.*, [📝Adversarial Attacks on Graph Neural Networks via Meta Learning](https://arxiv.org/abs/1902.08412), *ICLR'19*.
++ **Metattack**, **MetaApprox**, from *Daniel Zügner et al.*, [📝Adversarial Attacks on Graph Neural Networks via Meta Learning](https://arxiv.org/abs/1902.08412), *ICLR'19*.
 [[🌈 GraphAdv Example]](https://github.com/EdisonLeeeee/GraphAdv/tree/master/examples/Untargeted%20Attack/test_Metattack.ipynb), [[🌈 GraphAdv Example]](https://github.com/EdisonLeeeee/GraphAdv/tree/master/examples/Untargeted%20Attack/test_MetaApprox.ipynb)
-+ Degree, Node Embedding Attack, from *Aleksandar Bojchevski et al.*, [📝Adversarial Attacks on Node Embeddings via Graph Poisoning](https://arxiv.org/abs/1809.01093), *ICLR'19*.
++ **Degree**, **Node Embedding Attack**, from *Aleksandar Bojchevski et al.*, [📝Adversarial Attacks on Node Embeddings via Graph Poisoning](https://arxiv.org/abs/1809.01093), *ICLR'19*.
 [[🌈 GraphAdv Example]](https://github.com/EdisonLeeeee/GraphAdv/tree/master/examples/Untargeted%20Attack/test_Degree.ipynb), [[🌈 GraphAdv Example]](https://github.com/EdisonLeeeee/GraphAdv/blob/master/examples/Untargeted%20Attack/test_node_embedding_attack.ipynb)
-+ PGD, MinMax, from *Kaidi Xu et al.*, [📝Topology Attack and Defense for Graph Neural Networks: An Optimization Perspective](https://arxiv.org/abs/1906.04214), *IJCAI'19*.
++ **PGD**, **MinMax**, from *Kaidi Xu et al.*, [📝Topology Attack and Defense for Graph Neural Networks: An Optimization Perspective](https://arxiv.org/abs/1906.04214), *IJCAI'19*.
 [[🌈 Poisoning Example]](https://github.com/EdisonLeeeee/GraphAdv/blob/master/examples/Untargeted%20Attack/test_PGD_poisoning.ipynb), [[🌈 Poisoning Example]](https://github.com/EdisonLeeeee/GraphAdv/blob/master/examples/Untargeted%20Attack/test_MinMax_poisoning.ipynb), [[🌈 Evasion Example]](https://github.com/EdisonLeeeee/GraphAdv/blob/master/examples/Untargeted%20Attack/test_PGD_evasion.ipynb)
 
 ## Defense
-+ JaccardDetection, CosinDetection, from *Huijun Wu et al.*, [📝Adversarial Examples on Graph Data: Deep Insights into Attack and Defense](https://arxiv.org/abs/1903.01610), *IJCAI'19*.
++ **JaccardDetection**, **CosinDetection**, from *Huijun Wu et al.*, [📝Adversarial Examples on Graph Data: Deep Insights into Attack and Defense](https://arxiv.org/abs/1903.01610), *IJCAI'19*.
  [[🌈 GraphAdv Example]](https://github.com/EdisonLeeeee/GraphAdv/blob/master/examples/Defense/test_detection.ipynb)
 + Adversarial Tranining, from *Kaidi Xu et al.*, [📝Topology Attack and Defense for Graph Neural Networks: An Optimization Perspective](https://arxiv.org/abs/1906.04214), *IJCAI'19*.
  [[🌈 GraphAdv Example]](https://github.com/EdisonLeeeee/GraphAdv/blob/master/examples/Defense/test_svd.ipynb)
-+ SVD, from *Negin Entezari et al.*, [📝All You Need Is Low (Rank): Defending Against Adversarial Attacks on Graphs](https://dl.acm.org/doi/abs/10.1145/3336191.3371789), *WSDM'20*.
-+ RGCN, from *Dingyuan Zhu et al.*, [Robust Graph Convolutional Networks Against Adversarial Attacks](http://pengcui.thumedialab.com/papers/RGCN.pdf), *KDD'19*.
++ **SVD**, from *Negin Entezari et al.*, [📝All You Need Is Low (Rank): Defending Against Adversarial Attacks on Graphs](https://dl.acm.org/doi/abs/10.1145/3336191.3371789), *WSDM'20*.
++ **RGCN**, from *Dingyuan Zhu et al.*, [Robust Graph Convolutional Networks Against Adversarial Attacks](http://pengcui.thumedialab.com/papers/RGCN.pdf), *KDD'19*.
  [[🌈 GraphAdv Example]](https://github.com/EdisonLeeeee/GraphAdv/blob/master/examples/Defense/test_RGCN.ipynb)
 
 More details of the official papers and codes can be found in [Awesome Graph Adversarial Learning](https://github.com/gitgiter/Graph-Adversarial-Learning).
