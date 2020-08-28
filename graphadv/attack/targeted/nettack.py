@@ -52,17 +52,17 @@ class Nettack(TargetedAttacker):
         # GCN weight matrices
         W1, W2 = surrogate_weights
         self.W = W1 @ W2
-        self.cooc_matrix = (self.sparse_x.T @ self.sparse_x).tocoo()
+        self.cooc_matrix = self.sparse_x.T @ self.sparse_x
 
     def reset(self):
         super().reset()
-        self.modified_adj = self.adj.tolil()
-        self.modified_x = self.sparse_x.tolil()
-        self.adj_norm = normalize_adj(self.modified_adj).tolil()
+        self.modified_adj = self.adj.copy()
+        self.modified_x = self.sparse_x.copy()
+        self.adj_norm = normalize_adj(self.modified_adj)
 
         self.structure_flips = []
         self.feature_flips = []
-        self.influencer_nodes = []
+        self.influence_nodes = []
         self.potential_edges = []
         self.cooc_constraint = None
 
@@ -84,9 +84,10 @@ class Nettack(TargetedAttacker):
         """
 
         n_nodes, n_attrs = self.modified_x.shape
-        words_graph = self.cooc_matrix.copy()
-        words_graph.setdiag(0)
-        words_graph = (words_graph > 0)
+        words_graph = self.cooc_matrix - sp.diags(self.cooc_matrix.diagonal())
+        words_graph.eliminate_zeros()        
+#         words_graph.setdiag(0)
+        words_graph.data = words_graph.data > 0
         word_degrees = words_graph.sum(0).A1
 
         inv_word_degrees = np.reciprocal(word_degrees.astype(float) + 1e-8)
@@ -159,7 +160,7 @@ class Nettack(TargetedAttacker):
         """
 
         if self.cooc_constraint is None:
-            self.compute_cooccurrence_constraint(self.influencer_nodes)
+            self.compute_cooccurrence_constraint(self.influence_nodes)
 
         logits = self.compute_logits()
         best_wrong_class = self.strongest_wrong_class(logits)
@@ -170,7 +171,7 @@ class Nettack(TargetedAttacker):
         gradients_flipped[self.modified_x.nonzero()] *= -1
 
         X_influencers = sp.lil_matrix(self.modified_x.shape)
-        X_influencers[self.influencer_nodes] = self.modified_x[self.influencer_nodes]
+        X_influencers[self.influence_nodes] = self.modified_x[self.influence_nodes]
         gradients_flipped = gradients_flipped.multiply((self.cooc_constraint + X_influencers) > 0)
         nnz_ixs = np.array(gradients_flipped.nonzero()).T
 
@@ -242,8 +243,8 @@ class Nettack(TargetedAttacker):
 
         assert n < self.n_nodes-1, "number of influencers cannot be >= number of nodes in the graph!"
 
-        neighbors = self.modified_adj[self.target].nonzero()[1]
-        # neighbors = self.modified_adj[self.target].indices
+#         neighbors = self.modified_adj[self.target].nonzero()[1]
+        neighbors = self.modified_adj[self.target].indices
 #         assert self.target not in neighbors
 
         potential_edges = np.column_stack((np.tile(self.target, len(neighbors)), neighbors)).astype("int32")
@@ -255,12 +256,12 @@ class Nettack(TargetedAttacker):
         # compute the struct scores for all neighbors
         struct_scores = self.struct_score(a_hat_uv, XW)
         if len(neighbors) >= n:  # do we have enough neighbors for the number of desired influencers?
-            influencer_nodes = neighbors[np.argsort(struct_scores)[:n]]
+            influence_nodes = neighbors[np.argsort(struct_scores)[:n]]
             if add_additional_nodes:
-                return influencer_nodes, np.array([])
-            return influencer_nodes
+                return influence_nodes, np.array([])
+            return influence_nodes
         else:
-            influencer_nodes = neighbors
+            influence_nodes = neighbors
             if add_additional_nodes:  # Add additional influencers by connecting them to u first.
                 # Compute the set of possible additional influencers, i.e. all nodes except the ones
                 # that are already connected to u.
@@ -275,9 +276,9 @@ class Nettack(TargetedAttacker):
                 additional_struct_scores = self.struct_score(a_hat_uv_additional, XW)
                 additional_influencers = poss_add_infl[np.argsort(additional_struct_scores)[-n_additional_attackers::]]
 
-                return influencer_nodes, additional_influencers
+                return influence_nodes, additional_influencers
             else:
-                return influencer_nodes
+                return influence_nodes
 
     def compute_new_a_hat_uv(self, potential_edges):
         """
@@ -346,22 +347,22 @@ class Nettack(TargetedAttacker):
             alpha_start = compute_alpha(n_start, S_d_start, d_min)
             log_likelihood_orig = compute_log_likelihood(n_start, alpha_start, S_d_start, d_min)
 
-        if len(self.influencer_nodes) == 0:
+        if len(self.influence_nodes) == 0:
             if not direct_attack:
                 # Choose influencer nodes
                 infls, add_infls = self.get_attacker_nodes(n_influencers, add_additional_nodes=True)
-                self.influencer_nodes = np.concatenate((infls, add_infls)).astype("int")
+                self.influence_nodes = np.concatenate((infls, add_infls)).astype("int")
                 # Potential edges are all edges from any attacker to any other node, except the respective
                 # attacker itself or the node being attacked.
                 self.potential_edges = np.row_stack([np.column_stack((np.tile(infl, self.n_nodes - 2),
                                                                       np.setdiff1d(np.arange(self.n_nodes),
                                                                                    np.array([self.target, infl])))) for infl in
-                                                     self.influencer_nodes])
+                                                     self.influence_nodes])
             else:
                 # direct attack
                 influencers = [self.target]
                 self.potential_edges = np.column_stack((np.tile(self.target, self.n_nodes-1), np.setdiff1d(np.arange(self.n_nodes), self.target)))
-                self.influencer_nodes = np.array(influencers)
+                self.influence_nodes = np.array(influencers)
 
         self.potential_edges = self.potential_edges.astype("int32")
 
@@ -375,7 +376,7 @@ class Nettack(TargetedAttacker):
 
                 if ll_constraint:
                     # Update the values for the power law likelihood ratio test.
-                    deltas = 2 * (1 - self.modified_adj[tuple(filtered_edges.T)].toarray()[0]) - 1
+                    deltas = 2 * (1 - self.modified_adj[tuple(filtered_edges.T)].A.ravel()) - 1
                     d_edges_old = current_degree_sequence[filtered_edges]
                     d_edges_new = current_degree_sequence[filtered_edges] + deltas[:, None]
                     new_S_d, new_n = update_Sx(current_S_d, current_n, d_edges_old, d_edges_new, d_min)
@@ -418,10 +419,12 @@ class Nettack(TargetedAttacker):
 
             if change_structure:
                 # perform edge perturbation
-
-                self.modified_adj[tuple(best_edge)] = self.modified_adj[tuple(best_edge[::-1])] = 1 - self.modified_adj[tuple(best_edge)]
-                self.adj_norm = normalize_adj(self.modified_adj)
-                self.structure_flips.append(tuple(best_edge))
+                u, v = best_edge
+                modified_adj = self.modified_adj.tolil(copy=False)
+                modified_adj[(u, v)] = modified_adj[(v, u)] = 1 - modified_adj[(u, v)]
+                self.modified_adj = modified_adj.tocsr(copy=False)
+                self.adj_norm = normalize_adj(modified_adj)
+                self.structure_flips.append((u, v))
 
                 if ll_constraint:
                     # Update likelihood ratio test values
@@ -429,7 +432,10 @@ class Nettack(TargetedAttacker):
                     current_n = new_n[powerlaw_filter][best_edge_ix]
                     current_degree_sequence[best_edge] += deltas[powerlaw_filter][best_edge_ix]
             else:
-                self.modified_x[tuple(best_feature_ix)] = 1 - self.modified_x[tuple(best_feature_ix)]
+                
+                modified_x = self.modified_x.tolil(copy=False)
+                modified_x[tuple(best_feature_ix)] = 1 - modified_x[tuple(best_feature_ix)]
+                self.modified_x = modified_x.tocsr(copy=False)
                 self.feature_flips.append(tuple(best_feature_ix))
 
 
