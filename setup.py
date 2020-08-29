@@ -1,5 +1,10 @@
 #!/usr/bin/env python
 # coding: utf-8
+try:
+    import graphgallery
+except ImportError:
+    raise ImportError("No module named 'graphgallery'. Please install it first! Using 'pip install graphgallery -U'.")
+    
 from setuptools import setup, find_packages
 from graphadv import __version__
 
