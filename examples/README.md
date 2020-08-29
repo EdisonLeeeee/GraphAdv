@@ -3,7 +3,7 @@ In detail, the following methods are currently implemented:
 
 ## Attack
 ### Targeted Attack
-+ **RAND**: The the simplest attack method.
++ **RAND**: The simplest attack method.
 [[🌈 Example]](https://github.com/EdisonLeeeee/GraphAdv/tree/master/examples/Targeted%20Attack/test_RAND.ipynb)
 + **FGSM**, from *Ian J. Goodfellow et al.*, [📝Explaining and Harnessing Adversarial Examples](https://arxiv.org/abs/1412.6572), *ICLR'15*.
 [[🌈 Example]](https://github.com/EdisonLeeeee/GraphAdv/tree/master/examples/Targeted%20Attack/test_FGSM.ipynb)
@@ -21,7 +21,7 @@ In detail, the following methods are currently implemented:
 [[🌈 Example]](https://github.com/EdisonLeeeee/GraphAdv/tree/master/examples/Targeted%20Attack/test_SGA.ipynb)
 
 ### Untargeted Attack
-+ **RAND**: The the simplest attack method.
++ **RAND**: The simplest attack method.
 [[🌈 Example]](https://github.com/EdisonLeeeee/GraphAdv/tree/master/examples/Untargeted%20Attack/test_RAND.ipynb)
 + **FGSM**, from *Ian J. Goodfellow et al.*, [📝Explaining and Harnessing Adversarial Examples](https://arxiv.org/abs/1412.6572), *ICLR'15*.
 [[🌈 Example]](https://github.com/EdisonLeeeee/GraphAdv/tree/master/examples/Untargeted%20Attack/test_FGSM.ipynb)
