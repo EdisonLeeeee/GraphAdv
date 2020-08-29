@@ -40,6 +40,9 @@ class Nettack(TargetedAttacker):
         self.allow_feature_attack = True
 
         if surrogate is None:
+            # By default, Nettack uses a linear GCN model.
+            if not 'activations' in surrogate_args:
+                surrogate_args['activations'] = None
             surrogate = train_a_surrogate(self, 'GCN', idx_train, **surrogate_args)
         elif not isinstance(surrogate, GCN):
             raise RuntimeError('surrogate model should be the instance of `graphgallery.nn.models.GCN`.')
