@@ -14,10 +14,10 @@ def train_a_surrogate(attacker, surrogate, idx_train, idx_val=None, **kwargs):
                             name=attacker.name + '.'  + surrogate,
                             norm_x=kwargs.pop('norm_x', None),
                             device=kwargs.pop('device', attacker.device))
-    if surrogate!= 'SGC':
+    if surrogate != 'SGC':
         model.build(hiddens=kwargs.pop('hiddens', 16), activations=kwargs.pop('activations', 'relu'))
     else:
-        model.build(activations=kwargs.pop('activations', 'relu'))
+        model.build()
         
 #     # if save_best and idx_val is not specified, do not use save best.
 #     # but if save_best is specified or save_best is not specified and idx_val is specified,

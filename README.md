@@ -18,6 +18,8 @@
 ![](https://img.shields.io/github/issues/EdisonLeeeee/GraphAdv)
 [![GitHub license](https://img.shields.io/github/license/EdisonLeeeee/GraphAdv)](https://github.com/EdisonLeeeee/GraphAdv/blob/master/LICENSE)
 
+# NOTE: GraphAdv is still Building due to the upgrading of GraphGallery
+
 TensorFlow 2 implementation of state-of-the-arts graph adversarial attack and defense models (methods). This repo is built on another graph-based repository [GraphGallery](https://github.com/EdisonLeeeee/GraphGallery), You can browse it for more details.
 
 # Installation
@@ -94,7 +96,7 @@ In detail, the following methods are currently implemented:
 ## Attack
 ### Targeted Attack
 + **RAND**: The simplest attack method.
-[[🌈 Example]](https://github.com/EdisonLeeeee/GraphAdv/tree/master/examples/Targeted%20Attack/test_RAND.ipynb)
+[[🌈 Example]](https://github.com/EdisonLeeeee/GraphAdv/tree/master/examples/Targeted%20Attack/test_RA.ipynb)
 + **FGSM**, from *Ian J. Goodfellow et al.*, [📝Explaining and Harnessing Adversarial Examples](https://arxiv.org/abs/1412.6572), *ICLR'15*.
 [[🌈 Example]](https://github.com/EdisonLeeeee/GraphAdv/tree/master/examples/Targeted%20Attack/test_FGSM.ipynb)
 + **DICE**, from *Marcin Waniek et al*, [📝Hiding Individuals and Communities in a Social Network](https://arxiv.org/abs/1608.00375), *Nature Human Behavior 16*.
@@ -112,7 +114,7 @@ In detail, the following methods are currently implemented:
 
 ### Untargeted Attack
 + **RAND**: The simplest attack method.
-[[🌈 Example]](https://github.com/EdisonLeeeee/GraphAdv/tree/master/examples/Untargeted%20Attack/test_RAND.ipynb)
+[[🌈 Example]](https://github.com/EdisonLeeeee/GraphAdv/tree/master/examples/Untargeted%20Attack/test_RA.ipynb)
 + **FGSM**, from *Ian J. Goodfellow et al.*, [📝Explaining and Harnessing Adversarial Examples](https://arxiv.org/abs/1412.6572), *ICLR'15*.
 [[🌈 Example]](https://github.com/EdisonLeeeee/GraphAdv/tree/master/examples/Untargeted%20Attack/test_FGSM.ipynb)
 + **DICE**, from *Marcin Waniek et al*, [📝Hiding Individuals and Communities in a Social Network](https://arxiv.org/abs/1608.00375), *Nature Human Behavior 16*.
