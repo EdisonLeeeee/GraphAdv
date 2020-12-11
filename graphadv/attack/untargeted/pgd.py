@@ -111,6 +111,7 @@ class PGD(UntargetedAttacker):
             loss = tf.minimum(margin, 0.)
             loss = tf.reduce_sum(loss)
         else:
+            #TODO: is it wrong???
             loss = self.loss_fn(self.labels_attack, logit)
             logit = tf.argmax(logit, axis=1, output_type=self.intx)
 

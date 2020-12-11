@@ -13,21 +13,20 @@ url = 'https://github.com/EdisonLeeeee/GraphgAdv'
 
 install_requires = [
     'networkx>=2.3',
-    'scipy>=1.4.1',
+    'scipy',
     'tensorflow>=2.1.0',
-    'numpy>=1.17.4',
-    'texttable>=1.6.2',
-    'numba==0.46.0',
-    'llvmlite==0.30',
-    'tqdm>=4.40.2',
-    'scikit_learn>=0.22',
+    'numpy',
+    'texttable',
+    'numba',
+    'tqdm',
+    'scikit_learn',
     'graphgallery',
 ]
 
 setup(
     name='graphadv',
     version=VERSION,
-    description='Geometric Adversarial Learning Library for TensorFlow',
+    description='Geometric Adversarial Learning Library for TensorFlow and PyTorch',
     author='Jintang Li',
     author_email='cnljt@outlook.com',
     long_description=open("README.md", encoding="utf-8").read(),

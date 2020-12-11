@@ -11,7 +11,7 @@ from graphadv import epsilon
 
 def jaccard_similarity(A, B):
     intersection = np.count_nonzero(A*B, axis=1)
-    J = intersection * 1.0 / (np.count_nonzero(A, axis=1) + np.count_nonzero(B, axis=1) - intersection + epsilon())
+    J = intersection * 1.0 / (np.count_nonzero(A, axis=1) + np.count_nonzero(B, axis=1) + intersection + epsilon())
     return J
     
 def cosine_similarity(A, B):
