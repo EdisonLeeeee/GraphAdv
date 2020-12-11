@@ -1,24 +1,17 @@
 # GraphAdv
 
-<!-- [pypi-image]: https://badge.fury.io/py/graphadv.svg
-[pypi-url]: https://pypi.org/project/graphadv/ -->
-<!-- [![PyPI Version][pypi-image]][pypi-url] -->
-
-<p align="center">
+<!-- <p align="center">
   <img width = "500" height = "250" src="https://github.com/EdisonLeeeee/GraphAdv/blob/master/imgs/graphadv.svg" alt="logo"/>
 </p>
 
----
+--- -->
 
 [![Python 3.6](https://img.shields.io/badge/Python->=3.6-3776AB)](https://www.python.org/downloads/release/python-360/)
 [![TensorFlow >=2.1](https://img.shields.io/badge/TensorFlow->=2.1-FF6F00?logo=tensorflow)](https://github.com/tensorflow/tensorflow/releases/tag/v2.1.0)
 [![PyPI version](https://badge.fury.io/py/graphadv.svg)](https://badge.fury.io/py/graphadv)
-![](https://img.shields.io/github/forks/EdisonLeeeee/GraphAdv)
-![](https://img.shields.io/github/stars/EdisonLeeeee/GraphAdv)
-![](https://img.shields.io/github/issues/EdisonLeeeee/GraphAdv)
 [![GitHub license](https://img.shields.io/github/license/EdisonLeeeee/GraphAdv)](https://github.com/EdisonLeeeee/GraphAdv/blob/master/LICENSE)
 
-# NOTE: GraphAdv is still Building due to the upgrading of GraphGallery
+# NOTE: GraphAdv is still Building due the upgrading of GraphGallery
 
 TensorFlow 2 implementation of state-of-the-arts graph adversarial attack and defense models (methods). This repo is built on another graph-based repository [GraphGallery](https://github.com/EdisonLeeeee/GraphGallery), You can browse it for more details.
 
